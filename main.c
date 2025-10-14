@@ -69,7 +69,7 @@ int main_test(int argc, char *argv[])
 	}
 	if (argc >= 3) n = atol(argv[2]);
 
-	bwt = mb_bwt_load_raw(argv[1]);
+	bwt = mb_bwt_load(argv[1]);
 	if (n > 0) {
 		double t = mb_cputime();
 		for (i = 0; i < n; ++i) {

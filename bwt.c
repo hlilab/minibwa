@@ -430,7 +430,7 @@ uint64_t mb_bwt_sa(const mb_bwt_t *bwt, uint64_t k)
  * Read/write BWT and SA *
  *************************/
 
-static uint64_t fread_huge(FILE *fp, uint64_t size, void *a)
+static uint64_t read_huge(FILE *fp, uint64_t size, void *a)
 { // Mac/Darwin has a bug when reading data longer than 2GB. This function fixes this issue by reading data in small chunks
 	const int bufsize = 0x1000000; // 16M block
 	uint64_t offset = 0;
@@ -457,24 +457,54 @@ mb_bwt_t *mb_bwt_load_raw(const char *fn)
 	fread(&primary, sizeof(uint64_t), 1, fp);
 	fread(L2 + 1, sizeof(uint64_t), 4, fp);
 	L2[0] = 0;
-	fread_huge(fp, raw_size<<2, raw);
+	read_huge(fp, raw_size<<2, raw);
 	fclose(fp);
 	bwt = mb_bwt_init_from_raw(raw, L2[4], primary);
 	free(raw);
 	return bwt;
 }
 
-void mb_bwt_save(const char *fn, const mb_bwt_t *bwt)
+int mb_bwt_save(const char *fn, const mb_bwt_t *bwt)
 {
 	FILE *fp;
 	uint32_t dummy = 0;
+
 	fp = fopen(fn, "wb");
+	if (fp == 0) return -1;
 	fwrite(MB_MAGIC, 1, 4, fp);
 	fwrite(&dummy, 4, 1, fp);
 	fwrite(&bwt->primary, 8, 1, fp);
 	fwrite(&bwt->L2[1], 8, 4, fp);
 	fwrite(bwt->data, 8, bwt->data_len, fp);
 	fclose(fp);
+	return 0;
+}
+
+mb_bwt_t *mb_bwt_load(const char *fn)
+{
+	FILE *fp;
+	char magic[4];
+	uint32_t dummy;
+	uint64_t x[5];
+	mb_bwt_t *bwt;
+
+	fp = fopen(fn, "rb");
+	if (fp == 0) return 0;
+	fread(magic, 1, 4, fp);
+	if (strncmp(magic, MB_MAGIC, 4) != 0) {
+		fclose(fp);
+		return 0;
+	}
+	fread(&dummy, 4, 1, fp);
+	fread(x, 8, 5, fp);
+	bwt = mb_bwt_init();
+	bwt->primary = x[0];
+	memcpy(&bwt->L2[1], &x[1], 32);
+	bwt->seq_len = bwt->L2[4];
+	bwt->data_len = mb_bwt_data_len(bwt->seq_len);
+	bwt->data = mb_calloc(uint64_t, bwt->data_len);
+	read_huge(fp, bwt->data_len << 3, bwt->data);
+	return bwt;
 }
 
 /*
@@ -510,7 +540,7 @@ void mb_bwt_restore_sa(const char *fn, mb_bwt_t *bwt)
 	bwt->sa = mb_calloc(uint64_t, bwt->n_sa);
 	bwt->sa[0] = -1;
 
-	fread_huge(fp, sizeof(uint64_t) * (bwt->n_sa - 1), bwt->sa + 1);
+	read_huge(fp, sizeof(uint64_t) * (bwt->n_sa - 1), bwt->sa + 1);
 	fclose(fp);
 }
 */
