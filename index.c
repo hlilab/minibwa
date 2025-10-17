@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <assert.h>
 #include <stdio.h>
 #include "bwt.h"
 #include "l2bit.h"
@@ -38,10 +39,12 @@ mb_bwt_t *mb_bwt_libsais(const l2b_t *l2b, int sa_bit, int both_strand, int n_th
 		if ((i & mask) == 0)
 			ssa[i >> sa_bit] = a[i];
 	ssa[0] = (uint64_t)-1;
+	primary = (uint64_t)-1;
 	for (i = 0; i <= len; ++i) {
 		if (a[i] == 0) primary = i;
 		else a[i] = seq[a[i] - 1];
 	}
+	assert(primary != (uint64_t)-1);
 	for (i = 0; i < primary; ++i) seq[i] = a[i];
 	for (; i < len; ++i) seq[i] = a[i + 1];
 	free(a);
@@ -197,7 +200,7 @@ int main_index(int argc, char *argv[])
 	fn_l2b = kom_calloc(char, strlen(prefix) + 5);
 	strcat(strcpy(fn_l2b, prefix), ".l2b");
 	fn_bwt = kom_calloc(char, strlen(prefix) + 5);
-	strcat(strcpy(fn_bwt, prefix), ".bwt");
+	strcat(strcpy(fn_bwt, prefix), ".mbw");
 
 	l2b = l2b_import(argv[o.ind], seed);
 	kom_assert(l2b, "failed to read the genome FASTA.");
