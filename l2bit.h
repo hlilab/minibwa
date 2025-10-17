@@ -19,10 +19,10 @@ typedef struct {
 	uint64_t n_ctg, m_ctg;
 	l2b_ctg_t *ctg;
 	uint64_t n_pac, m_pac;
-	uint64_t *pac;
 	uint64_t n_ambi, m_ambi;
 	uint64_t n_mask, m_mask;
 	l2b_intv_t *ambi, *mask;
+	uint64_t *pac;
 	char *cat_name, *cat_comm;
 } l2b_t;
 
@@ -30,7 +30,7 @@ typedef struct {
 extern "C" {
 #endif
 
-l2b_t *l2b_import(const char *fn, uint64_t seed);
+l2b_t *l2b_import(const char *fn, uint64_t seed, int both_strand);
 l2b_t *l2b_load(const char *fn);
 int l2b_save(const char *fn, const l2b_t *l2b);
 void l2b_destroy(l2b_t *l2b);

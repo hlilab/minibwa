@@ -82,7 +82,7 @@ static void l2b_collate_str(l2b_t *l2b)
 	}
 }
 
-l2b_t *l2b_import(const char *fn, uint64_t seed)
+l2b_t *l2b_import(const char *fn, uint64_t seed, int both_strand)
 {
 	gzFile fp;
 	kseq_t *ks;
@@ -93,8 +93,13 @@ l2b_t *l2b_import(const char *fn, uint64_t seed)
 	if (fp == 0) return 0;
 	ks = kseq_init(fp);
 	l2b = hl_calloc(l2b_t, 1);
-	while (kseq_read(ks) >= 0)
+	while (kseq_read(ks) >= 0) {
 		l2b_add_seq(l2b, ks->seq.l, ks->seq.s, ks->name.s, ks->comment.l? ks->comment.s : 0, &rng);
+		if (both_strand) {
+			hl_revcomp(ks->seq.l, ks->seq.s);
+			l2b_add_seq(l2b, ks->seq.l, ks->seq.s, ks->name.s, ks->comment.l? ks->comment.s : 0, &rng);
+		}
+	}
 	kseq_destroy(ks);
 	gzclose(fp);
 	l2b_collate_str(l2b);
