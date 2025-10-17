@@ -256,13 +256,13 @@ int64_t mb_bwt_smem(void *km, const mb_bwt_t *f, int64_t len, const uint8_t *q, 
 
 // retrieve a character from the $-removed BWT string. Note that mb_bwt_t::data is
 // not exactly the BWT string and therefore this macro is called bwt_B0 instead of bwt_B
-#define bwt_B0(b, k) (*(bwt_block(b, k) + 4 + ((k)>>5)) >> (((k)&31)<<1) & 3)
+#define bwt_B0(b, k) ((b)->data[((k)>>7<<3) + 4 + (((k)&127)>>5)] >> (((k)&31)<<1) & 3)
 
 static inline uint64_t bwt_invPsi(const mb_bwt_t *bwt, uint64_t k) // compute inverse CSA
 {
 	uint64_t x = k - (k > bwt->primary);
 	int c = bwt_B0(bwt, x);
-	x = bwt->L2[c] + mb_bwt_rank11(bwt, k, c);
+	x = bwt->L2[c] + 1 + mb_bwt_rank11(bwt, k, c); // +1 to account for the sentinel
 	return k == bwt->primary? 0 : x;
 }
 

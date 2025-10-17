@@ -53,17 +53,6 @@ static inline void mb_bwt_set_intv(const mb_bwt_t *bwt, int c, mb_sai_t *ik)
 	ik->info = 0;
 }
 
-
-
-void mb_bwt_dump_bwt(const char *fn, const mb_bwt_t *bwt);
-void mb_bwt_dump_sa(const char *fn, const mb_bwt_t *bwt);
-
-mb_bwt_t *mb_bwt_restore_bwt(const char *fn);
-void mb_bwt_restore_sa(const char *fn, mb_bwt_t *bwt);
-
-void bwt_cal_sa(mb_bwt_t *bwt, int intv);
-uint64_t bwt_sa(const mb_bwt_t *bwt, uint64_t k);
-
 #ifdef __cplusplus
 }
 #endif
