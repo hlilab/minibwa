@@ -1,13 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-//#include "ketopt.h"
 #include "kommon.h"
 #include "mbpriv.h"
+#include "ketopt.h"
 
 #define MB_VERSION "0.0"
 
 int main_index(int argc, char *argv[]);
+int main_bench(int argc, char *argv[]);
 int main_fa2bit(int argc, char *argv[]);
 int main_raw2bwt(int argc, char *argv[]);
 int main_test(int argc, char *argv[]);
@@ -21,6 +22,7 @@ static int usage(FILE *fp)
 	fprintf(fp, "Commands:\n");
 	fprintf(fp, "  General:\n");
 	fprintf(fp, "    index      index reference FASTA\n");
+	fprintf(fp, "    bench      performance evaluation\n");
 	fprintf(fp, "    version    print the version number\n");
 	fprintf(fp, "  Separate indexing routines:\n");
 	fprintf(fp, "    fa2bit     convert FASTA to the long-2bit format\n");
@@ -37,6 +39,7 @@ int main(int argc, char *argv[])
 	kom_realtime();
 	if (argc == 1) return usage(stdout);
 	else if (strcmp(argv[1], "index") == 0) ret = main_index(argc-1, argv+1);
+	else if (strcmp(argv[1], "bench") == 0) ret = main_bench(argc-1, argv+1);
 	else if (strcmp(argv[1], "fa2bit") == 0) ret = main_fa2bit(argc-1, argv+1);
 	else if (strcmp(argv[1], "genraw") == 0) ret = main_genraw(argc-1, argv+1);
 	else if (strcmp(argv[1], "raw2bwt") == 0) ret = main_raw2bwt(argc-1, argv+1);
@@ -59,6 +62,49 @@ int main(int argc, char *argv[])
 			fprintf(stderr, " %s", argv[i]);
 		fprintf(stderr, "\n[M::%s] Real time: %.3f sec; CPU: %.3f sec; Peak RSS: %.3f GB\n", __func__, kom_realtime(), kom_cputime(), kom_peakrss() / 1024.0 / 1024.0 / 1024.0);
 	}
+	return 0;
+}
+
+typedef enum { MB_BENCH_2A } mb_bench_type_t;
+
+int main_bench(int argc, char *argv[])
+{
+	mb_bench_type_t type = MB_BENCH_2A;
+	uint64_t x = 11, cs = 1;
+	int64_t i, n = 1000000;
+	int c, print_val = 0;
+	mb_bwt_t *bwt;
+	ketopt_t o = KETOPT_INIT;
+	double t;
+
+	while ((c = ketopt(&o, argc, argv, 1, "pn:b:", 0)) >= 0) {
+		if (c == 'n') n = kom_parse_num(o.arg, 0);
+		else if (c == 'p') print_val = 1;
+	}
+	if (argc - o.ind < 1) {
+		fprintf(stderr, "Usage: minibwa bench [options] <in.mbw>\n");
+		fprintf(stderr, "Options:\n");
+		fprintf(stderr, "  -b STR         type: 2a or sa [2a]\n");
+		fprintf(stderr, "  -n NUM         number of data points [10k]\n");
+		fprintf(stderr, "  -p             print results for each data point\n");
+		return 1;
+	}
+
+	bwt = mb_bwt_load(argv[o.ind]);
+	t = kom_cputime();
+	if (type == MB_BENCH_2A) {
+		for (i = 0; i < n; ++i) {
+			uint64_t k = kom_splitmix64(&x) % bwt->seq_len;
+			uint64_t l = kom_splitmix64(&x) % bwt->seq_len;
+			uint64_t cntk[4], cntl[4];
+			mb_bwt_rank2a(bwt, k, l, cntk, cntl);
+			cs = cs * cntk[1] + cntl[0];
+			if (print_val) printf("%lld\n", cntk[1]);
+		}
+	}
+	fprintf(stderr, "checksum = %lx\n", (unsigned long)cs);
+	fprintf(stderr, "t = %.3f\n", kom_cputime() - t);
+	mb_bwt_destroy(bwt);
 	return 0;
 }
 
