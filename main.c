@@ -154,7 +154,8 @@ int main_seed(int argc, char *argv[])
 	gzFile fp;
 	kseq_t *ks;
 	int c, min_len = 19, min_occ = 1, max_size_out = 20;
-	uint64_t *sa;
+	uint64_t *sa, m_a = 0;
+	mb_sai_t *a = 0;
 	kstring_t out = {0};
 
 	while ((c = ketopt(&o, argc, argv, 1, "l:s:w:", 0)) >= 0) {
@@ -176,7 +177,7 @@ int main_seed(int argc, char *argv[])
 	ks = kseq_init(fp);
 	sa = kom_calloc(uint64_t, max_size_out);
 	while (kseq_read(ks) >= 0) {
-		int64_t x = 0, i;
+		int64_t x = 0, i, n_a = 0;
 		mb_sai_t p;
 		out.l = 0;
 		kom_sprintf_lite(&out, "SQ\t%s\t%ld\n", ks->name.s, ks->seq.l);
@@ -185,15 +186,25 @@ int main_seed(int argc, char *argv[])
 		do {
 			x = mb_bwt_smem(0, bwt, min_len, min_occ, ks->seq.l, (uint8_t*)ks->seq.s, x, &p);
 			if (p.size > 0) {
-				kom_sprintf_lite(&out, "EM\t%ld\t%ld\t%ld", p.info>>32, p.info&0xffffffffull, p.size);
-				if (p.size <= max_size_out) {
-					int64_t j, n_sa = mb_bwt_sa_multi(0, bwt, p.x[0], p.x[0] + p.size, max_size_out, sa);
-					for (j = 0; j < n_sa; ++j)
-						kom_sprintf_lite(&out, "\t%ld", sa[j]);
-				}
-				kom_sprintf_lite(&out, "\n");
+				kom_grow(mb_sai_t, a, n_a, m_a);
+				a[n_a++] = p;
 			}
 		} while (x < ks->seq.l);
+		for (i = 0; i < n_a; ++i) {
+			kom_sprintf_lite(&out, "EM\t%ld\t%ld\t%ld", a[i].info>>32, a[i].info&0xffffffffull, a[i].size);
+			if (a[i].size <= max_size_out) {
+				int64_t j, n_sa = a[i].size;
+				#if 1
+				for (j = 0; j < a[i].size; ++j)
+					sa[j] = mb_bwt_sa(bwt, p.x[0] + j);
+				#else
+				n_sa = mb_bwt_sa_multi(0, bwt, a[i].x[0], a[i].x[0] + a[i].size, max_size_out, sa);
+				#endif
+				for (j = 0; j < n_sa; ++j)
+					kom_sprintf_lite(&out, "\t%ld", sa[j]);
+			} else kom_sprintf_lite(&out, "\t*");
+			kom_sprintf_lite(&out, "\n");
+		}
 		kom_sprintf_lite(&out, "//\n");
 		fputs(out.s, stdout);
 	}

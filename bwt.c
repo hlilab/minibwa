@@ -296,6 +296,31 @@ uint64_t mb_bwt_sa(const mb_bwt_t *bwt, uint64_t k)
 	return sa + bwt->sa[k >> bwt->sa_bit];
 }
 
+void mb_bwt_sa2(void *km, const mb_bwt_t *bwt, int64_t n, uint64_t *x)
+{
+	uint64_t mask = (1ULL<<bwt->sa_bit) - 1;
+	int64_t i, step = 0, r = n;
+	kom128_t *z;
+	z = Kmalloc(km, kom128_t, n);
+	for (i = 0; i < n; ++i)
+		z[i].x = x[i], z[i].y = i;
+	for (step = 0; r; ++step) {
+		int64_t r0;
+		for (i = 0; i < r; ++i) {
+			if (i + 1 < r) __builtin_prefetch(bwt_block(bwt, z[i+1].x));
+			z[i].x = bwt_invPsi(bwt, z[i].x);
+		}
+		for (i = 0; i < r; ++i)
+			if ((z[i].x & mask) == 0)
+				x[z[i].y] = step + bwt->sa[z[i].y >> bwt->sa_bit];
+		r0 = r;
+		for (i = 0, r = 0; i < r0; ++i)
+			if (z[i].x & mask)
+				z[r++] = z[i];
+	}
+	free(z);
+}
+
 /****************
  * Multiple SAs *
  ****************/

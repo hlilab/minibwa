@@ -29,6 +29,8 @@ typedef struct {
 } kstring_t;
 #endif
 
+typedef struct { uint64_t x, y; } kom128_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
