@@ -126,6 +126,7 @@ void mb_anchor(void *km, const mb_idx_t *idx, const mb_sai_v *u, int32_t max_occ
 			} else {
 				for (j = 0; j < p->size && n < max_occ;) {
 					int32_t step = (p->size - j) / (max_occ - n);
+					if (step < 1) step = 1;
 					a[n++] = p->x[0] + j;
 					j += step;
 				}
