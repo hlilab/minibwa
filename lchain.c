@@ -53,7 +53,7 @@ static int64_t mb_chain_bk_end(int32_t max_drop, const mb128_t *z, const int32_t
 	return max_i;
 }
 
-uint64_t *mb_chain_backtrack(void *km, int64_t n, const int32_t *f, const int64_t *p, int32_t *v, int32_t *t, int32_t min_cnt, int32_t min_sc, int32_t max_drop, int32_t *n_u_, int32_t *n_v_)
+static uint64_t *mb_chain_backtrack(void *km, int64_t n, const int32_t *f, const int64_t *p, int32_t *v, int32_t *t, int32_t min_sc, int32_t max_drop, int32_t *n_u_, int32_t *n_v_)
 {
 	mb128_t *z;
 	uint64_t *u;
@@ -78,7 +78,7 @@ uint64_t *mb_chain_backtrack(void *km, int64_t n, const int32_t *f, const int64_
 			for (i = z[k].y; i != end_i; i = p[i])
 				++n_v, t[i] = 1;
 			sc = i < 0? z[k].x : (int32_t)z[k].x - f[i];
-			if (sc >= min_sc && n_v > n_v0 && n_v - n_v0 >= min_cnt)
+			if (sc >= min_sc && n_v > n_v0)
 				++n_u;
 			else n_v = n_v0;
 		}
@@ -93,7 +93,7 @@ uint64_t *mb_chain_backtrack(void *km, int64_t n, const int32_t *f, const int64_
 			for (i = z[k].y; i != end_i; i = p[i])
 				v[n_v++] = i, t[i] = 1;
 			sc = i < 0? z[k].x : (int32_t)z[k].x - f[i];
-			if (sc >= min_sc && n_v > n_v0 && n_v - n_v0 >= min_cnt)
+			if (sc >= min_sc && n_v > n_v0)
 				u[n_u++] = (uint64_t)sc << 32 | (n_v - n_v0);
 			else n_v = n_v0;
 		}
@@ -175,7 +175,7 @@ static inline int32_t comput_sc(const mb_anchor_t *ai, const mb_anchor_t *aj, in
  *   u[]: score<<32 | #anchors (sum of lower 32 bits of u[] is the returned length of a[])
  * input a[] is deallocated on return
  */
-mb_anchor_t *mb_lchain_dp(int max_dist_x, int max_dist_y, int bw, int max_skip, int max_iter, int min_cnt, int min_sc, float chn_pen_gap, float chn_pen_skip,
+mb_anchor_t *mb_lchain_dp(int max_dist_x, int max_dist_y, int bw, int max_skip, int max_iter, int min_sc, float chn_pen_gap, float chn_pen_skip,
 						  int64_t n, mb_anchor_t *a, int *n_u_, uint64_t **_u, void *km)
 { // TODO: make sure this works when n has more than 32 bits
 	int32_t *f, *t, *v, n_u, n_v, mmax_f = 0, max_drop = bw;
@@ -234,7 +234,7 @@ mb_anchor_t *mb_lchain_dp(int max_dist_x, int max_dist_y, int bw, int max_skip, 
 		if (mmax_f < max_f) mmax_f = max_f;
 	}
 
-	u = mb_chain_backtrack(km, n, f, p, v, t, min_cnt, min_sc, max_drop, &n_u, &n_v);
+	u = mb_chain_backtrack(km, n, f, p, v, t, min_sc, max_drop, &n_u, &n_v);
 	*n_u_ = n_u, *_u = u; // NB: note that u[] may not be sorted by score here
 	kfree(km, p); kfree(km, f); kfree(km, t);
 	if (n_u == 0) {
@@ -273,7 +273,7 @@ static inline int32_t comput_sc_simple(const mb_anchor_t *ai, const mb_anchor_t 
 	return sc;
 }
 
-mb_anchor_t *mb_lchain_rmq(int max_dist, int max_dist_inner, int bw, int max_chn_skip, int cap_rmq_size, int min_cnt, int min_sc, float chn_pen_gap, float chn_pen_skip,
+mb_anchor_t *mb_lchain_rmq(int max_dist, int max_dist_inner, int bw, int max_chn_skip, int cap_rmq_size, int min_sc, float chn_pen_gap, float chn_pen_skip,
 						   int64_t n, mb_anchor_t *a, int *n_u_, uint64_t **_u, void *km)
 {
 	int32_t *f,*t, *v, n_u, n_v, mmax_f = 0, max_rmq_size = 0, max_drop = bw;
@@ -383,7 +383,7 @@ mb_anchor_t *mb_lchain_rmq(int max_dist, int max_dist_inner, int bw, int max_chn
 	}
 	km_destroy(mem_mp);
 
-	u = mb_chain_backtrack(km, n, f, p, v, t, min_cnt, min_sc, max_drop, &n_u, &n_v);
+	u = mb_chain_backtrack(km, n, f, p, v, t, min_sc, max_drop, &n_u, &n_v);
 	*n_u_ = n_u, *_u = u; // NB: note that u[] may not be sorted by score here
 	kfree(km, p); kfree(km, f); kfree(km, t);
 	if (n_u == 0) {
