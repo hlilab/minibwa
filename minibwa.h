@@ -16,9 +16,18 @@ typedef struct {
 	int32_t min_len; // min seed length
 	int32_t max_sub_occ; // look for shorter seed if smem occ below this value
 	int32_t max_occ; // max interval occurrence
-	// algorithm options
+	// general algorithm options
+	int32_t bw, bw_long; // bandwidth
+	int32_t max_gap; // break a chain if there are no seeds in a max_gap window
+	// chaining options
+	int32_t max_chain_skip, max_chain_iter;
+	int32_t min_chain_score; // min chaining score
+	int32_t rmq_inner_dist; // RMQ inner distance
+	int32_t rmq_size_cap; // RMQ size cap
+	float chn_pen_gap; // gap penalty coefficient
+	float chn_pen_skip; // skip penalty coefficient
+	// input/output options
 	int32_t n_thread; // number of worker threads, excluding I/O threads
-	// input options
 	int64_t mb_size;  // mini-batch size
 } mb_mopt_t;
 
