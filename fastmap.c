@@ -73,8 +73,7 @@ int main_fastmap(int argc, char *argv[])
 			mb_seed_intv(0, bwt, ks->seq.l, (uint8_t*)ks->seq.s, min_len, max_sub_occ, &u);
 			if (test_anchor) {
 				int32_t j;
-				mb_anchor(0, idx, &u, max_anchor_occ, &v);
-				mb_anchor_sort(v.n, v.a);
+				mb_anchor(0, idx, &u, ks->seq.l, max_anchor_occ, &v);
 				if (test_chain) {
 					int n_u;
 					uint64_t *cu;
@@ -98,20 +97,16 @@ int main_fastmap(int argc, char *argv[])
 				} else {
 					for (j = 0; j < v.n; ++j) {
 						mb_anchor_t *q = &v.a[j];
-						int32_t tid, rev;
-						int64_t ts, te;
-						if (q->tid2 < idx->l2b->n_ctg) {
-							tid = q->tid2, rev = 0;
-							ts = q->tpos + 1 - q->len - idx->l2b->ctg[tid].off;
-							te = q->tpos + 1 - idx->l2b->ctg[tid].off;
+						int32_t qs, qe;
+						if (!(q->sid&1)) {
+							qs = q->qpos + 1 - q->len;
+							qe = q->qpos + 1;
 						} else {
-							tid = 2 * idx->l2b->n_ctg - 1 - q->tid2, rev = 1;
-							ts = idx->l2b->tot_len * 2 - (q->tpos + 1) - idx->l2b->ctg[tid].off;
-							te = idx->l2b->tot_len * 2 - (q->tpos + 1 - q->len) - idx->l2b->ctg[tid].off;
+							qs = ks->seq.l - (q->qpos + 1);
+							qe = ks->seq.l - (q->qpos + 1 - q->len);
 						}
 						kom_sprintf_lite(&out, "AR\t%s\t%d\t%d\t%s\t%ld\t%ld\t%c\n",
-							ks->name.s, q->qpos + 1 - q->len, q->qpos + 1,
-							idx->l2b->ctg[tid].name, (long)ts, (long)te, "+-"[rev]);
+							ks->name.s, qs, qe, idx->l2b->ctg[q->sid>>1].name, q->tpos + 1 - q->len, q->tpos + 1, "+-"[q->sid&1]);
 					}
 				}
 			} else {

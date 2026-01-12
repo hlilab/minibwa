@@ -146,7 +146,7 @@ static inline int32_t comput_sc(const mb_anchor_t *ai, const mb_anchor_t *aj, in
 	int32_t dq = ai->qpos - aj->qpos, dr, dd, dg, q_span, sc;
 	if (dq <= 0 || dq > max_dist_x) return INT32_MIN;
 	// Check if on same target; use tid for comparison
-	if (ai->tid2 != aj->tid2) return INT32_MIN;
+	if (ai->sid != aj->sid) return INT32_MIN;
 	dr = (int32_t)(ai->tpos - aj->tpos);
 	if (dr <= 0 || dq > max_dist_y) return INT32_MIN;
 	dd = dr > dq? dr - dq : dq - dr;
@@ -166,7 +166,7 @@ static inline int32_t comput_sc(const mb_anchor_t *ai, const mb_anchor_t *aj, in
 }
 
 /* Input:
- *   a[].tid2: target sequence ID (rev<<31 | tid)
+ *   a[].sid: target sequence ID (rev<<31 | tid)
  *   a[].tpos: target coordinate of the last base
  *   a[].qpos: query coordinate of the last base
  *   a[].len:  seed length (q_span)
@@ -198,7 +198,7 @@ mb_anchor_t *mb_lchain_dp(int max_dist_x, int max_dist_y, int bw, int max_skip, 
 	for (i = 0, max_ii = -1; i < n; ++i) {
 		int64_t max_j = -1, end_j;
 		int32_t max_f = a[i].len, n_skip = 0;
-		while (st < i && (a[i].tid2 != a[st].tid2 || (int64_t)(a[i].tpos - a[st].tpos) > max_dist_x)) ++st;
+		while (st < i && (a[i].sid != a[st].sid || (int64_t)(a[i].tpos - a[st].tpos) > max_dist_x)) ++st;
 		if (i - st > max_iter) st = i - max_iter;
 		for (j = i - 1; j >= st; --j) {
 			int32_t sc;
@@ -319,7 +319,7 @@ mb_anchor_t *mb_lchain_rmq(int max_dist, int max_dist_inner, int bw, int max_chn
 			i0 = i;
 		}
 		// get rid of active chains out of range
-		while (st < i && (a[i].tid2 != a[st].tid2 || (int64_t)(a[i].tpos - a[st].tpos) > max_dist || krmq_size(head, root) > cap_rmq_size)) {
+		while (st < i && (a[i].sid != a[st].sid || (int64_t)(a[i].tpos - a[st].tpos) > max_dist || krmq_size(head, root) > cap_rmq_size)) {
 			s.y = a[st].qpos, s.i = st;
 			if ((q = krmq_find(lc_elem, root, &s, 0)) != 0) {
 				q = krmq_erase(lc_elem, &root, q, 0);
@@ -328,7 +328,7 @@ mb_anchor_t *mb_lchain_rmq(int max_dist, int max_dist_inner, int bw, int max_chn
 			++st;
 		}
 		if (max_dist_inner > 0)  { // similar to the block above, but applied to the inner tree
-			while (st_inner < i && (a[i].tid2 != a[st_inner].tid2 || (int64_t)(a[i].tpos - a[st_inner].tpos) > max_dist_inner || krmq_size(head, root_inner) > cap_rmq_size)) {
+			while (st_inner < i && (a[i].sid != a[st_inner].sid || (int64_t)(a[i].tpos - a[st_inner].tpos) > max_dist_inner || krmq_size(head, root_inner) > cap_rmq_size)) {
 				s.y = a[st_inner].qpos, s.i = st_inner;
 				if ((q = krmq_find(lc_elem, root_inner, &s, 0)) != 0) {
 					q = krmq_erase(lc_elem, &root_inner, q, 0);

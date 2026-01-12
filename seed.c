@@ -96,12 +96,7 @@ void mb_seed_intv(void *km, const mb_bwt_t *bwt, int32_t len, const uint8_t *seq
 	}
 }
 
-void mb_anchor_sort(int64_t n, mb_anchor_t *a) // TODO: also deduplicate here?
-{
-	radix_sort_mb_anchor(a, a + n);
-}
-
-void mb_anchor(void *km, const mb_idx_t *idx, const mb_sai_v *u, int32_t max_occ, mb_anchor_v *v)
+void mb_anchor(void *km, const mb_idx_t *idx, const mb_sai_v *u, int32_t qlen, int32_t max_occ, mb_anchor_v *v)
 {
 	int64_t i, i0, j, k;
 	uint64_t *a;
@@ -145,19 +140,30 @@ void mb_anchor(void *km, const mb_idx_t *idx, const mb_sai_v *u, int32_t max_occ
 					int32_t qs = u->a[j].info>>32, qe = (int32_t)u->a[j].info;
 					int32_t rev, len = qe - qs;
 					int64_t tid, cst;
+					const l2b_ctg_t *ctg;
 					mb_anchor_t *q;
 					tid = l2b_intv2cid(idx->l2b, a[k], a[k] + len, &cst, &rev);
+					rev = !!rev; // make sure rev is 0 or 1
 					if (tid < 0) continue;
+					ctg = &idx->l2b->ctg[tid];
 					Kgrow(km, mb_anchor_t, v->a, v->n, v->m);
 					q = &v->a[v->n++];
-					q->tid2 = rev? idx->l2b->n_ctg * 2 - 1 - tid : tid;
+					memset(q, 0, sizeof(*q));
+					q->sid = tid << 1 | rev;
 					q->len = len;
-					q->qpos = qs + len - 1;
-					q->tpos = a[k] + len - 1;
+					q->qpos = rev? qlen - 1 - qs : qs + len - 1;
+					q->tpos = ctg->off * 2 + ctg->len * rev + cst + len - 1; // for sorting
 				}
 			}
 			i0 = i;
 		}
 	}
 	kfree(km, a);
+
+	radix_sort_mb_anchor(v->a, v->a + v->n);
+	for (i = 0; i < v->n; ++i) {
+		mb_anchor_t *q = &v->a[i];
+		const l2b_ctg_t *ctg = &idx->l2b->ctg[q->sid>>1];
+		q->tpos -= ctg->off * 2 + ctg->len * (q->sid&1);
+	}
 }

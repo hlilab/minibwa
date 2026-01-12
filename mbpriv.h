@@ -13,11 +13,11 @@ struct mb_idx_s {
 };
 
 typedef struct {
-	int32_t tid2; // stranded target sequence ID, ranged from 0 to 2*l2b_t::n_ctg - 1
+	int32_t sid; // tid<<1|rev
 	int32_t len; // length of the anchor
 	int32_t qpos; // the query coordinate of the last base in the anchor; the start base is qpos+1-len
-	uint32_t dummy; // this field can be used for bit flags or small information
-	uint64_t tpos; // the target coordinate of the last base in the anchor
+	uint32_t dummy;
+	int64_t tpos; // target/contig coordinate
 } mb_anchor_t;
 
 typedef struct { int64_t n, m; mb_anchor_t *a; } mb_anchor_v;
@@ -34,8 +34,7 @@ void mb_bwtgen(const char *fn_pac, const char *fn_bwt, int block_size);
 
 // defined in seed.c
 void mb_seed_intv(void *km, const mb_bwt_t *bwt, int32_t len, const uint8_t *seq, int32_t min_len, int32_t max_sub_occ, mb_sai_v *v);
-void mb_anchor(void *km, const mb_idx_t *idx, const mb_sai_v *u, int32_t max_occ, mb_anchor_v *v);
-void mb_anchor_sort(int64_t n, mb_anchor_t *a);
+void mb_anchor(void *km, const mb_idx_t *idx, const mb_sai_v *u, int32_t qlen, int32_t max_occ, mb_anchor_v *v);
 
 // defined in lchain.c
 mb_anchor_t *mb_lchain_dp(int max_dist_x, int max_dist_y, int bw, int max_skip, int max_iter, int min_sc, float chn_pen_gap, float chn_pen_skip,
