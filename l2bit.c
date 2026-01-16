@@ -26,7 +26,7 @@ int64_t l2b_intv2cid(const l2b_t *l2b, uint64_t st, uint64_t en, int64_t *cst, i
 	return s + (en - st) <= ctg->off + ctg->len? mid : -1;
 }
 
-int64_t l2b_getseq(const l2b_t *l2b, int32_t is_rev, int64_t tid, int64_t st, int64_t en, uint8_t *seq) // TODO: ambiguous bases
+int64_t l2b_getseq(const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, uint8_t *seq) // TODO: ambiguous bases
 {
 	const l2b_ctg_t *ctg;
 	int64_t i;
@@ -36,13 +36,8 @@ int64_t l2b_getseq(const l2b_t *l2b, int32_t is_rev, int64_t tid, int64_t st, in
 	if (en > ctg->len) en = ctg->len;
 	st += ctg->off;
 	en += ctg->off;
-	if (!is_rev) {
-		for (i = st; i < en; ++i)
-			seq[i - st] = l2b_get0(l2b, i);
-	} else {
-		for (i = en - 1; i >= st; --i)
-			seq[i - st] = 3 - l2b_get0(l2b, i);
-	}
+	for (i = st; i < en; ++i)
+		seq[i - st] = l2b_get0(l2b, i);
 	return en - st;
 }
 

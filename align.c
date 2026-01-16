@@ -609,7 +609,7 @@ static void mb_align1(void *km, const mb_opt_t *opt, const mb_idx_t *mi, int qle
 
 	if (qs > 0 && ts > 0) { // left extension; probably the condition can be changed to "qs > qs0 && ts > ts0"
 		qseq = &qseq0[rev][qs0];
-		l2b_getseq(mi->l2b, 0, tid, ts0, ts, tseq);
+		l2b_getseq(mi->l2b, tid, ts0, ts, tseq);
 		mb_seq_rev(qs - qs0, qseq);
 		mb_seq_rev(ts - ts0, tseq);
 		mb_align_pair(km, opt, qs - qs0, qseq, ts - ts0, tseq, mat, bw, opt->end_bonus, r->split_inv? opt->zdrop_inv : opt->zdrop, ksw_flag|KSW_EZ_EXTZ_ONLY|KSW_EZ_RIGHT|KSW_EZ_REV_CIGAR, ez);
@@ -640,7 +640,7 @@ static void mb_align1(void *km, const mb_opt_t *opt, const mb_idx_t *mi, int qle
 				bw1 = qe - qs > te - ts? qe - qs : te - ts;
 			// perform alignment
 			qseq = &qseq0[rev][qs];
-			l2b_getseq(mi->l2b, 0, tid, ts, te, tseq);
+			l2b_getseq(mi->l2b, tid, ts, te, tseq);
 			if (is_sr) { // perform ungapped alignment
 				int32_t max_gapped_score = (qe - qs - 2) * opt->a - 2 * (opt->q + opt->e);
 				assert(qe - qs == te - ts);
@@ -692,7 +692,7 @@ static void mb_align1(void *km, const mb_opt_t *opt, const mb_idx_t *mi, int qle
 
 	if (!dropped && qe < qe0 && te < te0) { // right extension
 		qseq = &qseq0[rev][qe];
-		l2b_getseq(mi->l2b, 0, tid, te, te0, tseq);
+		l2b_getseq(mi->l2b, tid, te, te0, tseq);
 		mb_align_pair(km, opt, qe0 - qe, qseq, te0 - te, tseq, mat, bw, opt->end_bonus, opt->zdrop, ksw_flag|KSW_EZ_EXTZ_ONLY, ez);
 		if (ez->n_cigar > 0) {
 			mb_append_cigar(r, ez->n_cigar, ez->cigar);
@@ -710,7 +710,7 @@ static void mb_align1(void *km, const mb_opt_t *opt, const mb_idx_t *mi, int qle
 	//for (i = 0; i < r->p->n_cigar; ++i) fprintf(stderr, "%d%c", r->p->cigar[i]>>4, MB_CIGAR_STR[r->p->cigar[i]&0xf]); fprintf(stderr, "\n");
 	assert(te1 - ts1 <= te0 - ts0);
 	if (r->p) {
-		l2b_getseq(mi->l2b, 0, tid, ts1, te1, tseq);
+		l2b_getseq(mi->l2b, tid, ts1, te1, tseq);
 		qseq = &qseq0[r->rev][qs1];
 		mb_update_extra(r, qseq, tseq, mat, opt->q, opt->e, opt->flag & MB_F_EQX, !is_sr);
 	}
@@ -738,7 +738,7 @@ static int mb_align1_inv(void *km, const mb_opt_t *opt, const mb_idx_t *mi, int 
 
 	ksw_gen_ts_mat(5, mat, opt->a, opt->b, opt->b_ts, opt->b_ambi);
 	tseq = (uint8_t*)kmalloc(km, tl);
-	l2b_getseq(mi->l2b, 0, r1->tid, r1->te, r2->ts, tseq);
+	l2b_getseq(mi->l2b, r1->tid, r1->te, r2->ts, tseq);
 	qseq = r1->rev? &qseq0[0][r2->qe] : &qseq0[1][qlen - r2->qs];
 
 	mb_seq_rev(ql, qseq);

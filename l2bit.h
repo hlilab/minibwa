@@ -33,7 +33,7 @@ extern "C" {
 l2b_t *l2b_load(const char *fn);
 void l2b_destroy(l2b_t *l2b);
 int64_t l2b_intv2cid(const l2b_t *l2b, uint64_t st, uint64_t en, int64_t *cst, int *rev);
-int64_t l2b_getseq(const l2b_t *l2b, int32_t is_rev, int64_t tid, int64_t st, int64_t en, uint8_t *seq);
+int64_t l2b_getseq(const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, uint8_t *seq);
 
 l2b_t *l2b_import(const char *fn, uint64_t seed);
 int l2b_save(const char *fn, const l2b_t *l2b);
@@ -42,6 +42,12 @@ int l2b_save_pac(const char *fn, const l2b_t *l2b, int both_strand);
 static inline int l2b_get0(const l2b_t *l2b, uint64_t i)
 {
 	return l2b->pac[i>>5] >> ((i&31)<<1) & 3;
+}
+
+static inline void l2b_seq_prefetch(const l2b_t *l2b, int64_t tid, int64_t st)
+{
+	if (tid >= 0 && tid < l2b->n_ctg && st >= 0 && st < l2b->ctg[tid].len)
+		__builtin_prefetch(&l2b->pac[(st + l2b->ctg[tid].off) >> 5]);
 }
 
 #ifdef __cplusplus
