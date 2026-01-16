@@ -107,16 +107,14 @@ void mb_seed_intv(void *km, const mb_bwt_t *bwt, int32_t len, const uint8_t *seq
 	}
 }
 
-typedef struct {
-	int64_t st, en;
-	int64_t x0, size;
-} anchor_aux_t;
+/************************
+ * Get contig positions *
+ ************************/
 
-typedef struct {
-	int64_t a, i;
-} sa_aux_t;
+typedef struct { int64_t st, en; } anchor_aux_t;
+typedef struct { int64_t a, i; } sa_aux_t;
 
-static void process_batch(void *km, const mb_idx_t *idx, const anchor_aux_t *aux, int32_t m, sa_aux_t *b, uint64_t *a, int32_t qlen, const mb_sai_v *u, mb_anchor_v *v)
+static void process_batch(void *km, const mb_idx_t *idx, const anchor_aux_t *aux, int32_t m, const sa_aux_t *b, uint64_t *a, int32_t qlen, const mb_sai_v *u, mb_anchor_v *v)
 {
 	int64_t j, k;
 	for (k = 0; k < m; ++k) a[k] = b[k].a;
@@ -139,7 +137,7 @@ static void process_batch(void *km, const mb_idx_t *idx, const anchor_aux_t *aux
 			q->sid = tid << 1 | rev;
 			q->len = len;
 			q->qpos = rev? qlen - 1 - qs : qs + len - 1;
-			q->tpos = ctg->off * 2 + ctg->len * rev + cst + len - 1; // for sorting
+			q->tpos = ctg->off * 2 + ctg->len * rev + cst + len - 1; // for sorting; will be adjusted later
 		}
 	}
 }
@@ -174,31 +172,28 @@ void mb_anchor(void *km, const mb_idx_t *idx, const mb_sai_v *u, int32_t qlen, i
 		if (i == u->n || u->a[i].x[0] != u->a[i0].x[0] || u->a[i].size != u->a[i0].size)
 			++n_aux, i0 = i;
 	aux = Kmalloc(km, anchor_aux_t, n_aux);
-	for (i = 1, i0 = 0, n_aux = 0; i <= u->n; ++i) { // fill aux[]
-		if (i == u->n || u->a[i].x[0] != u->a[i0].x[0] || u->a[i].size != u->a[i0].size) {
-			anchor_aux_t *p = &aux[n_aux++];
-			p->st = i0, p->en = i, p->x0 = u->a[i0].x[0], p->size = u->a[i0].size;
-			i0 = i;
-		}
-	}
+	for (i = 1, i0 = 0, n_aux = 0; i <= u->n; ++i) // populate aux[]
+		if (i == u->n || u->a[i].x[0] != u->a[i0].x[0] || u->a[i].size != u->a[i0].size)
+			aux[n_aux].st = i0, aux[n_aux++].en = i, i0 = i;
 
 	a = Kmalloc(km, uint64_t, max_occ * 2);
 	b = Kmalloc(km, sa_aux_t, max_occ * 2);
 	for (i = 0, m = 0; i < n_aux; ++i) {
-		anchor_aux_t *p = &aux[i];
-		if (p->size + m > batch_size) {
+		const anchor_aux_t *p = &aux[i];
+		const mb_sai_t *q = &u->a[p->st];
+		if (q->size + m > batch_size) {
 			process_batch(km, idx, aux, m, b, a, qlen, u, v);
 			m = 0;
 		}
-		if (p->size <= max_occ) { // get SA for all of them
-			for (j = 0; j < p->size; ++j)
-				b[m].a = p->x0 + j, b[m++].i = i;
+		if (q->size <= max_occ) { // get SA for all of them
+			for (j = 0; j < q->size; ++j)
+				b[m].a = q->x[0] + j, b[m++].i = i;
 		} else { // sample up to max_occ
 			int32_t n = 0;
-			for (j = 0; j < p->size && n < max_occ; ++n) {
-				int32_t step = (p->size - j) / (max_occ - n);
+			for (j = 0; j < q->size && n < max_occ; ++n) {
+				int32_t step = (q->size - j) / (max_occ - n);
 				if (step < 1) step = 1;
-				b[m].a = p->x0 + j, b[m++].i = i;
+				b[m].a = q->x[0] + j, b[m++].i = i;
 				j += step;
 			}
 		}
@@ -209,7 +204,7 @@ void mb_anchor(void *km, const mb_idx_t *idx, const mb_sai_v *u, int32_t qlen, i
 	kfree(km, aux);
 
 	radix_sort_mb_anchor(v->a, v->a + v->n);
-	for (i = 0; i < v->n; ++i) {
+	for (i = 0; i < v->n; ++i) { // adjust mb_anchor_t::tpos
 		mb_anchor_t *q = &v->a[i];
 		const l2b_ctg_t *ctg = &idx->l2b->ctg[q->sid>>1];
 		q->tpos -= ctg->off * 2 + ctg->len * (q->sid&1);
