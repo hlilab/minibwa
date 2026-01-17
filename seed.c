@@ -21,7 +21,7 @@ void mb_seed_intv(void *km, const mb_bwt_t *bwt, int32_t len, const uint8_t *seq
 
 	v->n = 0;
 	do {
-		x = mb_bwt_smem(bwt, len, seq, x, min_len, 1, 1, &p);
+		x = mb_bwt_smem(bwt, len, seq, x, min_len, 1, &p);
 		if (p.size > 0) {
 			Kgrow(km, mb_sai_t, v->a, v->n, v->m);
 			v->a[v->n++] = p;
@@ -37,7 +37,7 @@ void mb_seed_intv(void *km, const mb_bwt_t *bwt, int32_t len, const uint8_t *seq
 		x = st;
 		sub_min_len = (en - st) / 2 > min_len? (en - st) / 2 : min_len;
 		do { // TODO: if two SMEMs have large overlaps, we may find the same sub intervals in both
-			x = mb_bwt_smem(bwt, len, seq, x, sub_min_len, v->a[i].size + 1, v->a[i].size + 1, &p);
+			x = mb_bwt_smem(bwt, len, seq, x, sub_min_len, v->a[i].size + 1, &p);
 			if (p.size > v->a[i].size) {
 				Kgrow(km, mb_sai_t, v->a, v->n, v->m);
 				v->a[v->n++] = p;
