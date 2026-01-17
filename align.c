@@ -833,12 +833,6 @@ mb_hit_t *mb_align_skeleton(void *km, const mb_opt_t *opt, const mb_idx_t *mi, i
 	memset(&ez, 0, sizeof(ksw_extz_t));
 	for (i = 0; i < n_regs; ++i) {
 		mb_hit_t r2; // only used for inversion
-		if (i + 1 < n_regs) {
-			mb_hit_t *p = &regs[i + 1];
-			int64_t ts = p->rev? p->ts - p->qe : p->ts - p->qs;
-			if (ts < 0) ts = 0;
-			l2b_seq_prefetch(mi->l2b, p->tid, ts);
-		}
 		mb_align1(km, opt, mi, qlen, qseq0, &regs[i], &r2, n_a, a, &ez);
 		if (r2.cnt > 0) regs = mb_insert_reg(&r2, i, &n_regs, regs);
 		if (i > 0 && regs[i].split_inv) {
