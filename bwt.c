@@ -246,6 +246,33 @@ void mb_bwt_extend(const mb_bwt_t *bwt, const mb_sai_t *ik, mb_sai_t ok[4], int 
 	ok[0].x[is_back] = ok[1].x[is_back] + tl[1];
 }
 
+// backward search from pos
+int64_t mb_bwt_back(const mb_bwt_t *f, uint32_t len, const uint8_t *q, int64_t st, int64_t pos, int64_t min_occ, mb_sai_t *p)
+{
+	int64_t i;
+	mb_sai_t ok[4];
+	if (f->pre && pos - st >= f->pre_len) { // then use precomputed k-mer index instead of base-by-base extension
+		uint64_t z = 0, l = 0;
+		for (i = pos; l < f->pre_len; --i, ++l) // get the k-mer
+			z = z << 2 | q[i];
+		assert(z < 1<<f->pre_len*2);
+		*p = f->pre[z];
+	}
+	if (p->size < min_occ) { // then we need to use the standard procedure
+		mb_bwt_set_intv(f, q[pos], p);
+		i = pos - 1;
+	}
+	for (; i >= st; --i) { // backward extension
+		int c = q[i];
+		if (c > 3) break;
+		mb_bwt_extend(f, p, ok, 1);
+		if (ok[c].size < min_occ) break;
+		*p = ok[c];
+	}
+	return i;
+}
+
+// find super MEMs (SMEMs). See ropebwt3
 int64_t mb_bwt_smem(const mb_bwt_t *f, uint32_t len, const uint8_t *q, int64_t x, int64_t min_len, int64_t min_occ, mb_sai_t *p)
 {
 	int64_t i, j, xn;
@@ -257,23 +284,7 @@ int64_t mb_bwt_smem(const mb_bwt_t *f, uint32_t len, const uint8_t *q, int64_t x
 	for (i = x, xn = -1; i < x + min_len; ++i) // find the last N in [x,x+min_len)
 		if (q[i] > 3) xn = i;
 	if (xn >= 0) return xn + 1;
-	if (f->pre && min_len > f->pre_len) { // then use precomputed k-mer index instead of base-by-base extension
-		uint64_t z = 0, l = 0;
-		for (i = x + min_len - 1; l < f->pre_len; --i, ++l) // get the k-mer
-			z = z << 2 | q[i];
-		ik = f->pre[z];
-	}
-	if (ik.size < min_occ) { // then we need to use the standard procedure
-		mb_bwt_set_intv(f, q[x + min_len - 1], &ik);
-		i = x + min_len - 2;
-	}
-	for (; i >= x; --i) { // backward extension
-		int c = q[i];
-		if (c > 3) break;
-		mb_bwt_extend(f, &ik, ok, 1);
-		if (ok[c].size < min_occ) break;
-		ik = ok[c];
-	}
+	i = mb_bwt_back(f, len, q, x, x + min_len - 1, min_occ, &ik);
 	if (i >= x) return i + 1; // no MEM found
 	for (j = x + min_len; j < len; ++j) { // forward extension
 		int c = 3 - q[j];
@@ -284,14 +295,8 @@ int64_t mb_bwt_smem(const mb_bwt_t *f, uint32_t len, const uint8_t *q, int64_t x
 	}
 	*p = ik;
 	p->info = (uint64_t)x<<32 | j;
-	if (j == len) return len;
-	mb_bwt_set_intv(f, q[j], &ik);
-	for (i = j - 1; i > x; --i) { // backward extension again
-		int c = q[i];
-		mb_bwt_extend(f, &ik, ok, 1);
-		if (ok[c].size < min_occ) break;
-		ik = ok[c];
-	}
+	if (j == len) return len; // reaching end; no need to do another round
+	i = q[j] > 3? j : mb_bwt_back(f, len, q, x + 1, j, min_occ, &ik);
 	return i + 1;
 }
 
