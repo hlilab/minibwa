@@ -29,24 +29,6 @@ typedef struct {
 	mb_tbuf_t **tbuf;
 } step_t;
 
-static void worker_for(void *data, long i, int tid)
-{
-	step_t *s = (step_t*)data;
-	const mb_opt_t *opt = s->p->opt;
-	const mb_idx_t *idx = s->p->idx;
-	mb_tbuf_t *b = s->tbuf[tid];
-	int32_t j, k;
-	for (k = 0; k < s->sb_cnt[i]; ++k) {
-		int32_t off = s->seg_off[s->sb_off[i] + k];
-		int32_t cnt = s->seg_cnt[s->sb_off[i] + k];
-		for (j = 0; j < cnt; ++j) {
-			const mb_bseq1_t *t = &s->seq[off + j];
-			if (kom_dbg_flag & MB_DBG_QNAME) fprintf(stderr, "QN\t%s\t%d\n", t->name, tid);
-			s->hit[off+j] = mb_map(opt, idx, t->l_seq, t->seq, &s->n_hit[off+j], b, t->name);
-		}
-	}
-}
-
 static void worker_for_batch(void *data, long i, int tid)
 {
 	step_t *s = (step_t*)data;
@@ -146,11 +128,7 @@ static void *worker_pipeline(void *shared, int step, void *in)
 			return s;
 		} else free(s);
     } else if (step == 1) { // step 1: map
-        step_t *s = (step_t*)in;
-		if (0 || s->n_sb == s->n_frag)
-			kt_for(p->opt->n_thread, worker_for, in, s->n_sb);
-		else
-			kt_for(p->opt->n_thread, worker_for_batch, in, s->n_sb);
+		kt_for(p->opt->n_thread, worker_for_batch, in, ((step_t*)in)->n_sb);
 		return in;
     } else if (step == 2) { // step 2: output
 		void *km = 0;
