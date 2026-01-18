@@ -814,7 +814,7 @@ static inline mb_hit_t *mb_insert_reg(const mb_hit_t *r, int i, int *n_regs, mb_
 	return regs;
 }
 
-mb_hit_t *mb_align_skeleton(void *km, const mb_opt_t *opt, const mb_idx_t *mi, int qlen, const char *qstr, int *n_regs_, mb_hit_t *regs, mb_anchor_t *a)
+mb_hit_t *mb_align_skeleton(void *km, const mb_opt_t *opt, const mb_idx_t *mi, int qlen, const uint8_t *qseq, int *n_regs_, mb_hit_t *regs, mb_anchor_t *a)
 {
 	int32_t i, n_regs = *n_regs_, n_a;
 	uint8_t *qseq0[2];
@@ -823,10 +823,8 @@ mb_hit_t *mb_align_skeleton(void *km, const mb_opt_t *opt, const mb_idx_t *mi, i
 	// encode the query sequence
 	qseq0[0] = Kmalloc(km, uint8_t, qlen * 2);
 	qseq0[1] = qseq0[0] + qlen;
-	for (i = 0; i < qlen; ++i) {
-		qseq0[0][i] = kom_nt4_table[(uint8_t)qstr[i]];
-		qseq0[1][qlen - 1 - i] = qseq0[0][i] < 4? 3 - qseq0[0][i] : 4;
-	}
+	for (i = 0; i < qlen; ++i)
+		qseq0[0][i] = qseq[i], qseq0[1][qlen - 1 - i] = qseq0[0][i] < 4? 3 - qseq0[0][i] : 4;
 
 	// align through seed hits
 	n_a = mb_squeeze_a(km, n_regs, regs, a);

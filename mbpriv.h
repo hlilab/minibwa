@@ -65,7 +65,7 @@ void mb_split_hit(mb_hit_t *r, mb_hit_t *r2, int n, int qlen, mb_anchor_t *a, co
 void mb_fmt_paf_basic(kstring_t *s, const l2b_t *l2b, int64_t qlen, const mb_hit_t *p, const char *qname);
 
 // defined in align.c
-mb_hit_t *mb_align_skeleton(void *km, const mb_opt_t *opt, const mb_idx_t *mi, int qlen, const char *qstr, int *n_regs_, mb_hit_t *regs, mb_anchor_t *a);
+mb_hit_t *mb_align_skeleton(void *km, const mb_opt_t *opt, const mb_idx_t *mi, int qlen, const uint8_t *seq, int *n_regs_, mb_hit_t *regs, mb_anchor_t *a);
 
 // Fast log2 approximation (from minimap2)
 static inline float mb_log2(float x) // NB: this doesn't work when x<2

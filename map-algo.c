@@ -415,23 +415,17 @@ static void mb_dbg_anchor(const mb_idx_t *idx, int qlen, int64_t n, const mb_anc
 	}
 }
 
-mb_hit_t *mb_map(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, const char *seq0, int32_t *n_hit_, mb_tbuf_t *b, const char *qname)
+mb_hit_t *mb_map_sai(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, const uint8_t *seq, mb_sai_v *u, int32_t *n_hit_, mb_tbuf_t *b, const char *qname)
 {
-	uint8_t *seq;
 	uint32_t hash;
-	int32_t i, n_hit;
+	int32_t n_hit;
 	uint64_t *w;
 	float chn_pen_gap, chn_pen_skip;
-	mb_sai_v u = {0,0,0};
 	mb_anchor_v v = {0,0,0};
 	mb_anchor_t *a;
 	mb_hit_t *hit;
 
 	*n_hit_ = 0;
-	seq = Kmalloc(b->km, uint8_t, qlen);
-	for (i = 0; i < qlen; ++i)
-		seq[i] = kom_nt4_table[(uint8_t)seq0[i]];
-
 	hash  = qname? mb_hash_str(qname) : 0;
 	hash ^= mb_hash64(qlen) + mb_hash64(opt->seed);
 	hash  = mb_hash64(hash);
@@ -439,14 +433,13 @@ mb_hit_t *mb_map(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, const c
 	// initial chaining
 	chn_pen_gap = opt->chain_gap_scale * .01 * opt->min_len;
 	chn_pen_skip = opt->chain_skip_scale * .01 * opt->min_len;
-	mb_seed_intv(b->km, idx->bwt, qlen, seq, opt->min_len, opt->max_sub_occ, &u);
-	if (kom_dbg_flag & MB_DBG_SEED) mb_dbg_seed(u.n, u.a, qname);
-	mb_anchor(b->km, idx, &u, qlen, opt->max_occ, &v);
+	if (kom_dbg_flag & MB_DBG_SEED) mb_dbg_seed(u->n, u->a, qname);
+	mb_anchor(b->km, idx, u, qlen, opt->max_occ, &v);
 	if (kom_dbg_flag & MB_DBG_ANCHOR) mb_dbg_anchor(idx, qlen, v.n, v.a, qname);
 	a = mb_lchain_dp(b->km, opt->max_gap, opt->max_gap, opt->bw, opt->max_chain_skip, opt->max_chain_iter,
 					 opt->min_chain_score, chn_pen_gap, chn_pen_skip, v.n, v.a, &n_hit, &w);
 	v.a = 0; v.n = v.m = 0; // ownership transferred to a
-	kfree(b->km, u.a); // no longer needed
+	kfree(b->km, u->a); // no longer needed
 
 	// chain ordering
 	hit = mb_gen_hit(b->km, hash, qlen, idx->l2b, n_hit, w, a);
@@ -456,7 +449,7 @@ mb_hit_t *mb_map(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, const c
 
 	// base alignment
 	if (!(opt->flag & MB_F_NO_ALN)) {
-		hit = mb_align_skeleton(b->km, opt, idx, qlen, seq0, &n_hit, hit, a);
+		hit = mb_align_skeleton(b->km, opt, idx, qlen, seq, &n_hit, hit, a);
 		mb_set_parent(b->km, opt->mask_level, opt->mask_len, n_hit, hit, opt->a * 2 + opt->b, 0);
 		mb_select_sub(b->km, opt->pri_ratio, opt->min_len * 2, opt->best_n, &n_hit, hit);
 	}
@@ -464,7 +457,21 @@ mb_hit_t *mb_map(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, const c
 
 	// clean up
 	kfree(b->km, a);
-	kfree(b->km, seq);
 	*n_hit_ = n_hit;
 	return hit;
+}
+
+mb_hit_t *mb_map(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, const char *seq0, int32_t *n_hit_, mb_tbuf_t *b, const char *qname)
+{
+	mb_hit_t *ret;
+	mb_sai_v u = {0,0,0};
+	uint8_t *seq;
+	int64_t i;
+	seq = Kmalloc(b->km, uint8_t, qlen);
+	for (i = 0; i < qlen; ++i)
+		seq[i] = kom_nt4_table[(uint8_t)seq0[i]];
+	mb_seed_intv(b->km, idx->bwt, qlen, seq, opt->min_len, opt->max_sub_occ, &u);
+	ret = mb_map_sai(opt, idx, qlen, seq, &u, n_hit_, b, qname);
+	kfree(b->km, seq);
+	return ret;
 }
