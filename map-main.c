@@ -35,11 +35,15 @@ static void worker_for(void *data, long i, int tid)
 	const mb_opt_t *opt = s->p->opt;
 	const mb_idx_t *idx = s->p->idx;
 	mb_tbuf_t *b = s->tbuf[tid];
-	int32_t j, off = s->seg_off[i];
-	for (j = 0; j < s->seg_cnt[i]; ++j) {
-		const mb_bseq1_t *t = &s->seq[off + j];
-		if (kom_dbg_flag & MB_DBG_QNAME) fprintf(stderr, "QN\t%s\t%d\n", t->name, tid);
-		s->hit[off+j] = mb_map(opt, idx, t->l_seq, t->seq, &s->n_hit[off+j], b, t->name);
+	int32_t j, k;
+	for (k = 0; k < s->sb_cnt[i]; ++k) {
+		int32_t off = s->seg_off[s->sb_off[i] + k];
+		int32_t cnt = s->seg_cnt[s->sb_off[i] + k];
+		for (j = 0; j < cnt; ++j) {
+			const mb_bseq1_t *t = &s->seq[off + j];
+			if (kom_dbg_flag & MB_DBG_QNAME) fprintf(stderr, "QN\t%s\t%d\n", t->name, tid);
+			s->hit[off+j] = mb_map(opt, idx, t->l_seq, t->seq, &s->n_hit[off+j], b, t->name);
+		}
 	}
 }
 
@@ -57,7 +61,7 @@ static void *worker_pipeline(void *shared, int step, void *in)
 		if (p->n_fp > 1) s->seq = mb_bseq_read_frag(p->n_fp, p->fp, p->mb_size, with_qual, with_comment, &s->n_seq);
 		else s->seq = mb_bseq_read(p->fp[0], p->mb_size, with_qual, with_comment, frag_mode, &s->n_seq);
 		if (s->seq) {
-			int32_t sb_len, sb_cnt, sb_off;
+			int32_t sb_len, sb_off;
 			s->p = p;
 			for (i = 0; i < s->n_seq; ++i)
 				s->seq[i].id = p->n_seq++;
@@ -80,21 +84,20 @@ static void *worker_pipeline(void *shared, int step, void *in)
 				}
 			}
 			// set sb_cnt[] and sb_off[]
-			for (i = 0, sb_len = sb_cnt = sb_off = 0; i < s->n_frag; ++i) {
-				sb_cnt += s->seg_cnt[i];
+			for (i = 0, sb_len = sb_off = 0; i < s->n_frag; ++i) {
 				for (j = 0; j < s->seg_cnt[i]; ++j)
 					sb_len += s->seq[s->seg_off[i] + j].l_seq;
-				if (i == s->n_frag - 1 || sb_len >= opt->sb_len || sb_cnt >= opt->sb_seq) {
+				if (i == s->n_frag - 1 || sb_len >= opt->sb_len || i - sb_off >= opt->sb_seq) {
 					s->sb_off[s->n_sb] = sb_off;
-					s->sb_cnt[s->n_sb++] = sb_cnt;
-					sb_cnt = sb_len = 0;
+					s->sb_cnt[s->n_sb++] = i - sb_off;
+					sb_len = 0;
 					sb_off = i;
 				}
 			}
 			return s;
 		} else free(s);
     } else if (step == 1) { // step 1: map
-		kt_for(p->opt->n_thread, worker_for, in, ((step_t*)in)->n_frag);
+		kt_for(p->opt->n_thread, worker_for, in, ((step_t*)in)->n_sb);
 		return in;
     } else if (step == 2) { // step 2: output
 		void *km = 0;

@@ -50,6 +50,59 @@ void mb_seed_intv(void *km, const mb_bwt_t *bwt, int32_t len, const uint8_t *seq
 	}
 }
 
+void mb_seed_intv_batch(void *km, const mb_bwt_t *bwt, int32_t n_seq, int32_t *len, const uint8_t **seq, int32_t min_len, int32_t max_sub_occ, mb_sai_v *v)
+{
+	const int max_batch_size = 50;
+	mb_smem_entry_t *s;
+	int32_t i, j, n_s, *nv;
+
+	// first pass
+	s = Kcalloc(km, mb_smem_entry_t, max_batch_size);
+	nv = Kcalloc(km, int32_t, n_seq);
+	for (i = 0; i < n_seq; ++i) v[i].n = 0;
+	for (i = 0; i < n_seq; i += max_batch_size) {
+		int32_t en = i + max_batch_size < n_seq? i + max_batch_size : n_seq;
+		for (j = i; j < en; ++j) {
+			mb_smem_entry_t *t = &s[j - i];
+			t->min_len = min_len;
+			t->min_occ = 1;
+			t->st = 0, t->en = len[j];
+			t->q = seq[j];
+			t->v = &v[j];
+		}
+		mb_bwt_smem_batch(km, bwt, en - i, s);
+	}
+
+	// second pass
+	for (i = 0; i < n_seq; ++i) nv[i] = v[i].n;
+	for (i = n_s = 0; i < n_seq; ++i) {
+		for (j = 0; j < nv[i]; ++j) {
+			mb_smem_entry_t *t;
+			uint32_t st = v[i].a[j].info>>32, en = (uint32_t)v[i].a[j].info;
+			if (en - st < min_len * 2 || v[i].a[j].size > max_sub_occ)
+				continue;
+			t = &s[n_s++];
+			t->min_len = (en - st) / 2 > min_len? (en - st) / 2 : min_len;
+			t->min_occ = v[i].a[j].size + 1;
+			t->st = st, t->en = en;
+			t->q = seq[i];
+			t->v = &v[i];
+			if (n_s == max_batch_size) {
+				mb_bwt_smem_batch(km, bwt, n_s, s);
+				n_s = 0;
+			}
+		}
+	}
+	if (n_s > 0)
+		mb_bwt_smem_batch(km, bwt, n_s, s);
+	kfree(km, nv);
+	kfree(km, s);
+}
+
+/*****************************
+ * Seed/anchor deduplication *
+ *****************************/
+
 static void mb_seed_sort_dedup(mb_sai_v *u)
 {
 	int64_t i, i0, j;
@@ -70,10 +123,6 @@ static void mb_seed_sort_dedup(mb_sai_v *u)
 			u->a[++j] = u->a[i];
 	u->n = j + 1;
 }
-
-/************************
- * Get contig positions *
- ************************/
 
 /* Remove duplicated anchors. The two-round seeding algorithm may lead an
  * anchor precisely contained in a longer anchor. This routine filters out the
@@ -103,6 +152,10 @@ static void mb_anchor_dedup(mb_anchor_v *v) // NB: assuming sorted by tpos
 		if (!v->a[i].flt) v->a[j++] = v->a[i];
 	v->n = j;
 }
+
+/************************
+ * Get contig positions *
+ ************************/
 
 typedef struct { int64_t st, en; } anchor_aux_t;
 typedef struct { int64_t a, i; } sa_aux_t;
