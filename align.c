@@ -668,7 +668,6 @@ static void mb_align1(void *km, const mb_opt_t *opt, const mb_idx_t *mi, int qle
 	te1 = ts, qe1 = qs;
 	assert(qs1 >= 0 && ts1 >= 0);
 
-//	for (i = is_sr? cnt1 - 1 : 0; i < cnt1; ++i) { // gap filling; for short genomic reads, fill from the first seed to the last
 	for (i = 0; i < cnt1; ++i) { // gap filling
 		if ((a[as1+i].flag & MB_SEED_IGNORE) && i != cnt1 - 1) continue;
 		te = a[as1+i].tpos + 1 - mb_min_int32(a[as1+i].len>>1, max_back);

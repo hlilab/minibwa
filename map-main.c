@@ -240,6 +240,7 @@ static int usage(FILE *fp, const mb_opt_t *opt)
 	fprintf(fp, "Usage: minibwa map [options] <in.idx> <in.fastq>\n");
 	fprintf(fp, "Options:\n");
 	fprintf(fp, "  Mapping:\n");
+	fprintf(fp, "    -x STR           preset (sr or lr) [sr]\n");
 	fprintf(fp, "    -k INT           min k-mer length [%d]\n", opt->min_len);
 	fprintf(fp, "    -c NUM           max seed occurrences [%d]\n", opt->max_occ);
     fprintf(fp, "    -m INT           min chaining score [%d]\n", opt->min_chain_score);

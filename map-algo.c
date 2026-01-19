@@ -174,7 +174,7 @@ void mb_sync_hits(void *km, int n_regs, mb_hit_t *regs)
  **********************************/
 
 void mb_set_parent(void *km, float mask_level, int mask_len, int n, mb_hit_t *r, int sub_diff, int hard_mask_level)
-{
+{ // TODO: re-examine the logic for variable-length seeds
 	int i, j, k, *w;
 	uint64_t *cov;
 	if (n <= 0) return;
@@ -217,7 +217,6 @@ skip_uncov:
 				int cnt_sub = 0, sci = ri->score;
 				ri->parent = rp->parent;
 				rp->subsc = rp->subsc > sci? rp->subsc : sci;
-				if (ri->cnt >= rp->cnt) cnt_sub = 1;
 				if (rp->p && ri->p && (rp->tid != ri->tid || rp->ts != ri->ts || rp->te != ri->te || ol != min)) { // the last condition excludes identical hits after DP
 					sci = ri->p->dp_max;
 					rp->p->dp_max2 = rp->p->dp_max2 > sci? rp->p->dp_max2 : sci;
@@ -263,9 +262,7 @@ void mb_hit_sort(void *km, int *n_regs, mb_hit_t *r)
 	t = (mb_hit_t*)kmalloc(km, (size_t)n * sizeof(mb_hit_t));
 	for (i = n_aux = 0; i < n; ++i) {
 		if (r[i].inv || r[i].cnt > 0) { // squeeze out elements with cnt==0 (soft deleted)
-			int score;
-			if (r[i].p) score = r[i].p->dp_max;
-			else score = r[i].score;
+			int score = r[i].p? r[i].p->dp_max : r[i].score;
 			aux[n_aux].x = (uint64_t)score << 32 | r[i].hash;
 			aux[n_aux++].y = i;
 		} else if (r[i].p) {
@@ -373,7 +370,7 @@ void mb_set_mapq(void *km, int n_regs, mb_hit_t *regs, int min_chain_sc, int mat
 					x *= identity * identity;
 					mapq = (int)(6.02 * x * x * (r->p->dp_max - r->p->dp_max2) / match_sc + .499f);
 				} else { // long reads
-					x = (double)r->p->dp_max2 * subsc / r->p->dp_max / r->score0;
+					x = (double)r->p->dp_max2 / r->p->dp_max;
 					mapq = (int)(pen_s1 * identity * q_coef * (1.0 - x * x) * log((double)r->p->dp_max / match_sc));
 				}
 			} else {
