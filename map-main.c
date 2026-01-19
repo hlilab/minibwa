@@ -55,7 +55,6 @@ static void worker_for_batch(void *data, long i, int tid)
 			seq[p] = Kcalloc(km, uint8_t, t->l_seq);
 			for (l = 0; l < t->l_seq; ++l)
 				seq[p][l] = kom_nt4_table[(uint8_t)t->seq[l]];
-			//mb_seed_intv(km, idx->bwt, len[p], seq[p], opt->min_len, opt->max_sub_occ, &sai[p]);
 			++p;
 		}
 	}

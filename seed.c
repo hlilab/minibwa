@@ -11,6 +11,9 @@ KRADIX_SORT_INIT(mb_sai0, mb_sai_t, key_sai0, 8)
 #define key_sais(a) ((a).size)
 KRADIX_SORT_INIT(mb_sais, mb_sai_t, key_sais, 8)
 
+#define key_saii(a) ((a).info)
+KRADIX_SORT_INIT(mb_saii, mb_sai_t, key_saii, 8)
+
 #define key_anchor(a) ((a).tpos)
 KRADIX_SORT_INIT(mb_anchor, mb_anchor_t, key_anchor, 8)
 
@@ -107,13 +110,21 @@ static void mb_seed_sort_dedup(mb_sai_v *u)
 {
 	int64_t i, i0, j;
 	if (u->n <= 1) return;
-	// sort by ::x[0] and then by ::size
-	radix_sort_mb_sai0(u->a, u->a + u->n);
+	// sort by ::{x[0],size,info}
+	radix_sort_mb_sai0(u->a, u->a + u->n); // sort by ::x[0]
 	for (i = 1, i0 = 0; i <= u->n; ++i) {
 		if (i == u->n || u->a[i].x[0] != u->a[i0].x[0]) {
 			if (i - i0 > 1) {
-				radix_sort_mb_sais(&u->a[i0], &u->a[i]);
+				int64_t k, k0;
+				radix_sort_mb_sais(&u->a[i0], &u->a[i]); // sort by ::size
 				kom_reverse(mb_sai_t, u->n, u->a);
+				for (k = i0 + 1, k0 = i0; k <= i; ++k) {
+					if (k == i || u->a[k0].size != u->a[k].size) {
+						if (k - k0 > 1)
+							radix_sort_mb_saii(&u->a[k0], &u->a[k]); // sort by ::info
+						k0 = k;
+					}
+				}
 			}
 			i0 = i;
 		}
