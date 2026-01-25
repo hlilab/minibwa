@@ -27,7 +27,7 @@ static const mb_hit_t *mb_select_unique_se(int32_t n_hit, const mb_hit_t *hit)
 
 void mb_pestat(void *km, const mb_opt_t *opt, int32_t n_frag, const int32_t *seg_off, const int32_t *seg_cnt, const int32_t *n_hit, mb_hit_t *const *hit, mb_pestat_t pes[4])
 {
-	const int MIN_DIR_CNT = 10;
+	const int MIN_DIR_CNT = 20;
 	const double MIN_DIR_RATIO = 0.05, OUTLIER_BOUND = 2.0, MAPPING_BOUND = 3.0, MAX_STDDEV = 4.0;
 	int32_t i, d, max;
 	struct { int32_t n, m; uint64_t *a; } is[4], *q;
@@ -124,7 +124,6 @@ static void mb_pair_hits(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_
 		mb_hit_t *hi = &hit[pi->y&1][pi->y>>2];
 		for (r = 0; r < 2; ++r) {
 			int which, dir = r << 1 | (pi->y>>1&1);
-			//fprintf(stderr, "what: pes[%d].failed=%d\n", dir, pes[dir].failed);
 			if (pes[dir].failed) continue; // invalid orientation
 			which = r << 1 | ((pi->y&1) ^ 1);
 			if (y[which] < 0) continue; // no previous hit
@@ -157,13 +156,13 @@ static void mb_pair_hits(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_
 		int32_t tmp = opt->a + opt->b > opt->q + opt->e? opt->a + opt->b : opt->q + opt->e;
 		for (i = 0; i < n_pp; ++i) { // find max and max2
 			mb128_t *q = &pp[i];
-			if (q->x > max) max = q->x, ret->i[0] = q->y>>32, ret->i[1] = (uint32_t)q->y;
+			if (q->x > max) max2 = max, max = q->x, ret->i[0] = q->y>>32, ret->i[1] = (uint32_t)q->y;
 			else if (q->x > max2) max2 = q->x;
 		}
 		assert(ret->i[0] < n_hit[0] && ret->i[1] < n_hit[1]);
 		ret->score = max>>32, ret->sub_sc = max2>>32;
 		for (i = 0; i < n_pp; ++i)
-			if (pp[i].x>>32 <= ret->score - tmp)
+			if (pp[i].x>>32 >= ret->score - tmp)
 				ret->n_sub++;
 	}
 	kfree(km, pp);
@@ -372,10 +371,11 @@ void mb_pair(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_t n_hit[2], 
 	h[1] = &hit[1][paux.i[1]];
 	score_se = h[0]->p->dp_max + h[1]->p->dp_max;
 	if (paux.score >= score_se - opt->pen_unpair) {
-		int32_t mapq_pe, score2, s;
+		int32_t mapq_pe, score2 = paux.sub_sc, s;
 		double identity;
 		identity = (double)(h[0]->mlen + h[1]->mlen) / (h[0]->blen + h[1]->blen);
-		score2 = paux.sub_sc > score_se - opt->pen_unpair? paux.sub_sc : score_se - opt->pen_unpair;
+		if ((h[0]->id != h[0]->parent || h[1]->id != h[1]->parent) && score2 < score_se - opt->pen_unpair)
+			score2 = score_se - opt->pen_unpair;
 		mapq_pe = (int)(6.02 * identity * identity * (paux.score - score2) / opt->a - 4.343f * log(paux.n_sub + 1) + .499);
 		if (mapq_pe > 60) mapq_pe = 60;
 		if (mapq_pe == 0 && paux.score > score2) mapq_pe = 1;

@@ -21,7 +21,7 @@ typedef struct {
 
 typedef struct {
 	const pipeline_t *p;
-    int32_t n_seq, n_frag, n_sb;
+    int32_t n_seq, n_frag, n_sb, n_pe;
 	int32_t *n_hit, *seg_off, *seg_cnt;
 	int32_t *sb_off, *sb_cnt;
 	mb_pestat_t pes[4];
@@ -126,6 +126,7 @@ static void *worker_pipeline(void *shared, int step, void *in)
 					assert(i - j <= 2);
 					s->seg_cnt[s->n_frag] = i - j;
 					s->seg_off[s->n_frag++] = j;
+					if (i - j == 2) s->n_pe++;
 					j = i;
 				}
 			}
@@ -148,7 +149,7 @@ static void *worker_pipeline(void *shared, int step, void *in)
 		step_t *s = (step_t*)in;
 		kt_for(opt->n_thread, worker_for_se_batch, in, s->n_sb);
 		if ((opt->flag & MB_F_PE) && s->n_frag < s->n_seq) { // PE mode
-			if (opt->flag & MB_F_PE_PREDEF) { // use predefined PE stats
+			if ((opt->flag & MB_F_PE_PREDEF) || s->n_pe < 20) { // use predefined PE stats
 				s->pes[1].failed = 0;
 				s->pes[1].avg = opt->pe_avg, s->pes[1].std = opt->pe_std;
 				s->pes[1].lo = opt->pe_lo, s->pes[1].hi = opt->pe_hi;
