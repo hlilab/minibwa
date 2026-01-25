@@ -23,21 +23,13 @@ static void ksw_gen_simple_mat(int m, int8_t *mat, int8_t a, int8_t b, int8_t b_
 		mat[(m - 1) * m + j] = b_ambi;
 }
 
-static void ksw_gen_ts_mat(int m, int8_t *mat, int8_t a, int8_t b, int8_t b_ts, int8_t b_ambi)
+void ksw_gen_ts_mat(int m, int8_t *mat, int8_t a, int8_t b, int8_t b_ts, int8_t b_ambi)
 {
 	assert(m == 5);
 	ksw_gen_simple_mat(m, mat, a, b, b_ambi);
 	if (b_ts == 0 || b_ts == b) return;
 	b_ts = b_ts > 0? -b_ts : b_ts;
 	mat[0 * m + 2] = mat[1 * m + 3] = mat[2 * m + 0] = mat[3 * m + 1] = b_ts;
-}
-
-static inline void mb_seq_rev(uint32_t len, uint8_t *seq)
-{
-	uint32_t i;
-	uint8_t t;
-	for (i = 0; i < len>>1; ++i)
-		t = seq[i], seq[i] = seq[len - 1 - i], seq[len - 1 - i] = t;
 }
 
 static inline void update_max_zdrop(int32_t score, int i, int j, int32_t *max, int *max_i, int *max_j, int e, int *max_zdrop, int pos[2][2])
@@ -291,7 +283,7 @@ static void mb_update_extra(mb_hit_t *r, const uint8_t *qseq, const uint8_t *tse
 			toff += len;
 		}
 	}
-	p->dp_max = p->dp_max0 = (int32_t)(max + .499);
+	p->dp_max = (int32_t)(max + .499);
 	assert(qoff == r->qe - r->qs && toff == r->te - r->ts);
 	if (is_eqx) mm_update_cigar_eqx(r, qseq, tseq); // NB: it has to be called here as changes to qseq and tseq are not returned
 }
@@ -311,7 +303,7 @@ static void mb_enlarge_cigar(mb_hit_t *r, uint32_t n_cigar) // TODO: this calls 
 	}
 }
 
-static void mb_append_cigar(mb_hit_t *r, uint32_t n_cigar, const uint32_t *cigar)
+void mb_append_cigar(mb_hit_t *r, uint32_t n_cigar, const uint32_t *cigar)
 {
 	mb_extra_t *p;
 	if (n_cigar == 0) return;

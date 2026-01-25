@@ -23,6 +23,8 @@ void mb_opt_init(mb_opt_t *opt)
 	opt->zdrop_inv = 200;
 	// pairing options
 	opt->max_pe_ins = 10000;
+	opt->max_rescue = 20;
+	opt->pen_unpair = 17;
 	// I/O options
 	opt->sb_len = 1000000;
 	opt->sb_seq = 24;

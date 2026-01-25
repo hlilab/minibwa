@@ -67,6 +67,13 @@ static inline uint64_t kom_splitmix64(uint64_t *x)
 	return z ^ (z >> 31);
 }
 
+static inline double kom_u64todbl(uint64_t x)
+{
+	union { uint64_t i; double d; } u;
+	u.i = 0x3FFULL << 52 | x >> 12;
+	return u.d - 1.0;
+}
+
 #ifdef __cplusplus
 }
 #endif

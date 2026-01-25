@@ -48,7 +48,6 @@ typedef struct {
 	int score; // best score
 	int te, qe; // target end and query end
 	int score2, te2; // second best score and ending position on the target
-	int tb, qb; // target start and query start
 } ksw_llrst_t;
 
 /**

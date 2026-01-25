@@ -114,7 +114,7 @@ ksw_llrst_t ksw_ll_u8_core(void *q_, int tlen, const uint8_t *target, int _gapo,
 	int slen, i, m_b, n_b, te = -1, gmax = 0, minsc, endsc;
 	uint64_t *b;
 	__m128i gapoe, gape, shift, *H0, *H1, *E, *Hmax;
-	ksw_llrst_t r = { 0, -1, -1, -1, -1, -1, -1 };
+	ksw_llrst_t r = { 0, -1, -1, -1, -1 };
 
 	// initialization
 	minsc = (xtra&KSW_LL_SUBO)? xtra&0xffff : 0x10000;
@@ -238,7 +238,7 @@ ksw_llrst_t ksw_ll_i16_core(void *q_, int tlen, const uint8_t *target, int _gapo
 	int slen, i, m_b, n_b, te = -1, gmax = 0, minsc, endsc;
 	uint64_t *b;
 	__m128i gapoe, gape, *H0, *H1, *E, *Hmax;
-	ksw_llrst_t r = { 0, -1, -1, -1, -1, -1, -1 };
+	ksw_llrst_t r = { 0, -1, -1, -1, -1 };
 
 	// initialization
 	minsc = (xtra&KSW_LL_SUBO)? xtra&0xffff : 0x10000;

@@ -58,6 +58,8 @@ typedef struct {
 	int32_t min_ksw_len;
 	// pairing options
 	int32_t max_pe_ins;
+	int32_t max_rescue;
+	int32_t pen_unpair;
 	// input/output options
 	int32_t sb_len;   // number of bases for batch smem
 	int32_t sb_seq;   // number of sequences for batch smem
@@ -74,7 +76,6 @@ typedef struct mb_idx_s mb_idx_t;
 typedef struct {
 	uint32_t cap;                      // the capacity of cigar[]
 	int32_t dp_score, dp_max, dp_max2; // DP score; score of the max-scoring segment; score of the best alternate mappings
-	int32_t dp_max0;                   // DP score before mb_update_dp_max() adjustment
 	uint32_t n_ambi;                   // number of ambiguous bases;
 	int32_t n_cigar;                   // number of cigar operations in cigar[]
 	uint32_t cigar[];
@@ -95,7 +96,7 @@ typedef struct {
 	int32_t mlen, blen;
 	int32_t mapq;
 	uint32_t hash;
-	uint32_t rev:1, sam_pri:1, flt:1, inv:1, split:2, split_inv:1, dummy:25;
+	uint32_t rev:1, pp:1, sam_pri:1, flt:1, inv:1, split:2, split_inv:1, rescued:1, dummy:23;
 	int32_t seg_id;
 	mb_extra_t *p;
 } mb_hit_t;
