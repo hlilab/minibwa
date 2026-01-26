@@ -273,6 +273,7 @@ static void mb_matesw_core(void *km, const mb_opt_t *opt, const l2b_t *l2b, cons
 					ht.qs = len - ht.qe;
 					ht.qe = len - qt;
 				}
+				//fprintf(stderr, "X\t%s\t%ld\n", l2b->ctg[ht.tid].name, (long)ht.ts);
 				if (h1->n == h1->m) kom_grow(mb_hit_t, h1->a, h1->n, h1->m);
 				h1->a[h1->n++] = ht;
 			}
@@ -296,14 +297,14 @@ static int32_t mb_matesw(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_
 			rng ^= hit[r][i].hash, max[r] = max[r] > hit[r][i].p->dp_max? max[r] : hit[r][i].p->dp_max;
 	for (r = 0, n_res = 0; r < 2; ++r)
 		for (i = 0; i < n_hit[r]; ++i)
-			if (hit[r][i].proper_pair == 0 && hit[r][i].p->dp_max >= max[r] - opt->pen_unpair)
+			if (hit[r][i].proper_pair == 0 && hit[r][i].p->dp_max >= max[r] - opt->pen_unpair * opt->a)
 				++n_res;
 	if (n_res == 0) return 0; // nothing to rescue
 	if (n_res > opt->max_rescue) n_res = opt->max_rescue;
 	a = Kcalloc(km, uint64_t, n_res);
 	for (r = j = 0; r < 2; ++r) { // candidates for rescue
 		for (i = 0; i < n_hit[r]; ++i) {
-			if (hit[r][i].proper_pair == 0 && hit[r][i].p->dp_max >= max[r] - opt->pen_unpair) { // reservior sampling
+			if (hit[r][i].proper_pair == 0 && hit[r][i].p->dp_max >= max[r] - opt->pen_unpair * opt->a) { // reservior sampling
 				int32_t y;
 				y = j++ < n_res? j - 1 : (int32_t)(j * kom_u64todbl(kom_splitmix64(&rng)));
 				if (y < n_res) a[y] = (uint64_t)r << 32 | i;
@@ -370,14 +371,14 @@ void mb_pair(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_t n_hit[2], 
 	h[0] = &hit[0][paux.i[0]];
 	h[1] = &hit[1][paux.i[1]];
 	score_se = h[0]->p->dp_max + h[1]->p->dp_max;
-	if (paux.score >= score_se - opt->pen_unpair) {
+	if (paux.score >= score_se - opt->pen_unpair * opt->a) {
 		int32_t mapq_pe, score2 = paux.sub_sc, s;
 		double identity;
 		mb_sync_high_cov(n_hit[0], hit[0]);
 		mb_sync_high_cov(n_hit[1], hit[1]);
 		identity = (double)(h[0]->mlen + h[1]->mlen) / (h[0]->blen + h[1]->blen);
-		if ((h[0]->id != h[0]->parent || h[1]->id != h[1]->parent) && score2 < score_se - opt->pen_unpair)
-			score2 = score_se - opt->pen_unpair;
+		if ((h[0]->id != h[0]->parent || h[1]->id != h[1]->parent) && score2 < score_se - opt->pen_unpair * opt->a)
+			score2 = score_se - opt->pen_unpair * opt->a;
 		mapq_pe = (int)(6.02 * identity * identity * (paux.score - score2) / opt->a - 4.343f * log(paux.n_sub + 1) + .499);
 		mapq_pe = (int)(mapq_pe * (1. - .5 * (h[0]->frac_high / 255. + h[1]->frac_high / 255.)) + .499);
 		if (mapq_pe > 60) mapq_pe = 60;
