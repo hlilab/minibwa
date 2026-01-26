@@ -87,19 +87,18 @@ typedef struct {
 #define MB_PARENT_TMP_PRI (-2)
 
 typedef struct {
+	int64_t tid;            // target ID (the original tid, NOT stranded)
+	int64_t ts, te;         // target start and end
 	int32_t id;             // ID for internal uses
 	int32_t cnt;            // number of anchors
 	int32_t score, score0;  // chaining score; score0 is the original chaining score
 	int32_t as;             // offset in the a[] array (for internal uses only)
 	int32_t qs, qe;         // query start and end
-	int64_t tid;            // target ID (the original tid, NOT stranded)
-	int64_t ts, te;         // target start and end
 	int32_t parent, n_sub, subsc;
 	int32_t mlen, blen;
 	int32_t mapq;
 	uint32_t hash;
-	uint32_t rev:1, proper_pair:1, sam_pri:1, flt:1, inv:1, split:2, split_inv:1, rescued:1, dummy:23;
-	int32_t seg_id;
+	uint32_t rev:1, proper_pair:1, sam_pri:1, flt:1, inv:1, split:2, split_inv:1, rescued:1, frac_high:8, dummy:15;
 	mb_extra_t *p;
 } mb_hit_t;
 

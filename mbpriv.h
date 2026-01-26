@@ -60,6 +60,7 @@ mb_anchor_t *mb_lchain_dp(void *km, int max_dist_x, int max_dist_y, int bw, int 
 void *mb_tbuf_km(mb_tbuf_t *b);
 int32_t mb_cal_mblen(int32_t n, const mb_anchor_t *a, int32_t *blen_);
 mb_hit_t *mb_gen_hit(void *km, uint32_t hash, int qlen, const l2b_t *l2b, int n_u, uint64_t *u, mb_anchor_t *a);
+void mb_sync_high_cov(int32_t n, mb_hit_t *h);
 void mb_set_parent(void *km, float mask_level, int mask_len, int n, mb_hit_t *r, int sub_diff, int hard_mask_level);
 void mb_hit_sort(void *km, int *n_regs, mb_hit_t *r);
 void mb_sync_hits(void *km, int n_regs, mb_hit_t *regs);

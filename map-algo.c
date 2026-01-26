@@ -85,6 +85,41 @@ static inline void mb_hit_set_coor(mb_hit_t *r, int32_t qlen, const l2b_t *l2b, 
 	mb_cal_fuzzy_len(r, a);
 }
 
+int32_t mb_cal_high_cov(void *km, int32_t n, const mb_sai_t *sai, int32_t max_occ)
+{
+	int32_t i, n_hi = 0, hi_st, hi_en, hi_cov;
+	uint64_t *b;
+	for (i = 0; i < n; ++i)
+		if (sai[i].size > max_occ)
+			++n_hi;
+	if (n_hi == 0) return 0;
+	b = Kmalloc(km, uint64_t, n_hi);
+	for (i = 0, n_hi = 0; i < n; ++i)
+		if (sai[i].size > max_occ)
+			b[n_hi++] = sai[i].info;
+	radix_sort_mb64(b, b + n_hi);
+	hi_st = b[0]>>32, hi_en = (int32_t)b[0], hi_cov = 0;
+	for (i = 1; i < n_hi; ++i) {
+		int32_t st = b[i]>>32, en = (int32_t)b[i];
+		if (st > hi_en) {
+			hi_cov += hi_en - hi_st;
+			hi_st = st, hi_en = en;
+		} else hi_en = hi_en > en? hi_en : en;
+	}
+	hi_cov += hi_en - hi_st;
+	kfree(km, b);
+	return hi_cov;
+}
+
+void mb_sync_high_cov(int32_t n, mb_hit_t *h)
+{
+	int32_t i, max_frac = 0;
+	for (i = 0; i < n; ++i)
+		max_frac = max_frac > h[i].frac_high? max_frac : h[i].frac_high;
+	for (i = 0; i < n; ++i)
+		h[i].frac_high = max_frac;
+}
+
 mb_hit_t *mb_gen_hit(void *km, uint32_t hash, int qlen, const l2b_t *l2b, int n_u, uint64_t *u, mb_anchor_t *a)
 { // convert chains to hits
 	mb128_t *z, tmp;
@@ -261,7 +296,7 @@ void mb_hit_sort(void *km, int *n_regs, mb_hit_t *r)
 	aux = (mb128_t*)kmalloc(km, (size_t)n * 16);
 	t = (mb_hit_t*)kmalloc(km, (size_t)n * sizeof(mb_hit_t));
 	for (i = n_aux = 0; i < n; ++i) {
-		if (r[i].inv || r[i].cnt > 0) { // squeeze out elements with cnt==0 (soft deleted)
+		if (r[i].inv || r[i].cnt >= 0) {
 			int score = r[i].p? r[i].p->dp_max : r[i].score;
 			aux[n_aux].x = (uint64_t)score << 32 | r[i].hash;
 			aux[n_aux++].y = i;
@@ -420,7 +455,7 @@ static void mb_dbg_anchor(const mb_idx_t *idx, int qlen, int64_t n, const mb_anc
 mb_hit_t *mb_map_sai(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, const uint8_t *seq, mb_sai_v *u, int32_t *n_hit_, mb_tbuf_t *b, const char *qname)
 {
 	uint32_t hash;
-	int32_t n_hit;
+	int32_t i, n_hit, hi_cov;
 	int32_t sub_diff = opt->a + opt->b > opt->q + opt->e? opt->a + opt->b : opt->q + opt->e;
 	uint64_t *w;
 	float chn_pen_gap;
@@ -429,9 +464,11 @@ mb_hit_t *mb_map_sai(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, con
 	mb_hit_t *hit;
 
 	*n_hit_ = 0;
+	if (u->n == 0) return 0;
 	hash  = qname? mb_hash_str(qname) : 0;
 	hash ^= mb_hash64(qlen) + mb_hash64(opt->seed);
 	hash  = mb_hash64(hash);
+	hi_cov = mb_cal_high_cov(b->km, u->n, u->a, opt->max_occ);
 
 	// initial chaining
 	chn_pen_gap = opt->chain_gap_scale * .01 * opt->min_len;
@@ -456,6 +493,7 @@ mb_hit_t *mb_map_sai(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, con
 		mb_set_parent(b->km, opt->mask_level, opt->mask_len, n_hit, hit, sub_diff, 0);
 		mb_select_sub(b->km, opt->pri_ratio, opt->min_len * 2, opt->best_n, &n_hit, hit);
 	}
+	for (i = 0; i < n_hit; ++i) hit[i].frac_high = (int32_t)(255. * hi_cov / qlen);
 	mb_set_mapq(b->km, n_hit, hit, opt->min_chain_score, opt->a, !(opt->flag & MB_F_LONG));
 
 	// clean up
