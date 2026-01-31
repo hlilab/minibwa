@@ -16,6 +16,19 @@ static inline int mb_insert_dir(const mb_hit_t *h0, const mb_hit_t *h1, int64_t 
 	return ((int32_t)h0->rev << 1 | (int32_t)h1->rev) ^ (p0 < p1? 0 : 3);
 }
 
+static inline double mb_pair_score(const mb_hit_t *h0, const mb_hit_t *h1, const mb_pestat_t pes[4], int32_t match_sc)
+{
+	const double MB_SQRT1_2 = 0.707106781186547524401;
+	int32_t dir;
+	int64_t dist;
+	dir = mb_insert_dir(h0, h1, &dist);
+	if (!pes[dir].failed && dist >= pes[dir].lo && dist <= pes[dir].hi) {
+		double ns = (dist - pes[dir].avg) / pes[dir].std; // normalized score
+		return h0->p->dp_max + h1->p->dp_max + .721 * log(2. * erfc(fabs(ns) * MB_SQRT1_2)) * match_sc; // .721 = 1/log(4)
+	}
+	return -1.0;
+}
+
 static const mb_hit_t *mb_select_unique_se(int32_t n_hit, const mb_hit_t *hit)
 {
 	int32_t j, n_pri = 0, mapq = 0, k = -1;
@@ -92,8 +105,6 @@ void mb_pestat(void *km, const mb_opt_t *opt, int32_t n_frag, const int32_t *seg
 	}
 }
 
-#define MB_SQRT1_2 0.707106781186547524401
-
 typedef struct {
 	int32_t score, sub_sc, n_sub, n_pp;
 	int32_t i[2];
@@ -131,15 +142,14 @@ static void mb_pair_hits(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_
 				mb128_t *pk = &pa[k], *q;
 				mb_hit_t *hk = &hit[pk->y&1][pk->y>>2];
 				int64_t dist;
-				double ns, s;
+				double s;
 				if ((pk->y&3) != which) continue;
 				if (hi->tid != hk->tid) break;
 				dist = pi->x - pk->x;
 				if (dist > pes[dir].hi) break;
 				if (dist < pes[dir].lo) continue;
 				hk->proper_pair = hi->proper_pair = 1; // paired
-				ns = (dist - pes[dir].avg) / pes[dir].std; // normalized score
-				s = hk->p->dp_max + hi->p->dp_max + .721 * log(2. * erfc(fabs(ns) * MB_SQRT1_2)) * opt->a; // .721 = 1/log(4)
+				s = mb_pair_score(hk, hi, pes, opt->a);
 				if (s < 0.) s = 0.;
 				if (n_pp == m_pp) Kgrow(km, mb128_t, pp, n_pp, m_pp);
 				q = &pp[n_pp++];
@@ -238,13 +248,14 @@ typedef struct {
 	mb_hit_t *a;
 } mb_hit_v;
 
-static void mb_matesw_core(void *km, const mb_opt_t *opt, const l2b_t *l2b, const mb_pestat_t pes[4], const mb_hit_t *h0, int32_t r0, int32_t len, uint8_t *seq[2], mb_hit_v *h1, ksw_extz_t *ez)
+static const mb_hit_t *mb_matesw_core(void *km, const mb_opt_t *opt, const l2b_t *l2b, const mb_pestat_t pes[4], const mb_hit_t *h0, int32_t r0, int32_t len, uint8_t *seq[2], mb_hit_v *h1, ksw_extz_t *ez)
 {
 	int32_t dir, skip[4];
 	int64_t pos5;
+	const mb_hit_t *ret = 0;
 	// find permitted orientation
 	for (dir = 0; dir < 4; ++dir) skip[dir] = !!pes[dir].failed;
-	if (skip[0] + skip[1] + skip[2] + skip[3] == 4) return; // no need to perform SW
+	if (skip[0] + skip[1] + skip[2] + skip[3] == 4) return 0; // no need to perform SW
 	// perform SW
 	pos5 = h0->rev? h0->te : h0->ts;
 	for (dir = 0; dir < 4; ++dir) {
@@ -276,15 +287,17 @@ static void mb_matesw_core(void *km, const mb_opt_t *opt, const l2b_t *l2b, cons
 				//fprintf(stderr, "X\t%s\tscore0=%d\tnewts=%ld\n", l2b->ctg[ht.tid].name, h0->p->dp_max, (long)ht.ts);
 				if (h1->n == h1->m) kom_grow(mb_hit_t, h1->a, h1->n, h1->m);
 				h1->a[h1->n++] = ht;
+				ret = &h1->a[h1->n - 1];
 			}
 			kfree(km, ref);
 		}
 	}
+	return ret;
 }
 
-static int32_t mb_matesw(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_t n_hit[2], mb_hit_t *hit[2], const mb_pestat_t pes[4], int32_t qlen[2], char *const qseq[2])
+static int32_t mb_matesw(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_t n_hit[2], mb_hit_t *hit[2], const mb_pestat_t pes[4], const mb_pairaux_t *paux0, int32_t qlen[2], char *const qseq[2])
 {
-	int32_t i, r, n_add, n_res;
+	int32_t i, r, n_add, n_res, max = paux0->score, max2 = paux0->sub_sc;
 	mb_hit_v ha[2];
 	ksw_extz_t ez;
 	mb128_t *a;
@@ -293,24 +306,20 @@ static int32_t mb_matesw(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_
 	// precalculate the number of rescue candidates
 	for (r = 0, n_res = 0; r < 2; ++r) {
 		const mb_hit_t *h0 = hit[r];
-		int32_t max, m, n = n_hit[r];
-		if (n == 0) continue;
-		max = h0[0].p->dp_max;
+		int32_t m, n = n_hit[r];
 		for (i = 0, m = 0; i < n && m < opt->max_rescue; ++i)
-			if (h0[i].proper_pair == 0 && h0[i].p->dp_max >= max - opt->pen_unpair * opt->a)
+			if (h0[i].proper_pair == 0 && h0[i].p->dp_max >= h0[0].p->dp_max - opt->pen_unpair * opt->a)
 				++m;
 		n_res += m;
 	}
 	if (n_res == 0) return 0;
-	// collect rescue candidates; must sync with the loop above
+	// collect rescue candidates; MUST match the loop above
 	a = Kcalloc(km, mb128_t, n_res);
 	for (r = 0, n_res = 0; r < 2; ++r) {
 		const mb_hit_t *h0 = hit[r];
-		int32_t max, m, n = n_hit[r];
-		if (n == 0) continue;
-		max = h0[0].p->dp_max;
+		int32_t m, n = n_hit[r];
 		for (i = 0, m = 0; i < n && m < opt->max_rescue; ++i) {
-			if (h0[i].proper_pair == 0 && h0[i].p->dp_max >= max - opt->pen_unpair * opt->a) {
+			if (h0[i].proper_pair == 0 && h0[i].p->dp_max >= h0[0].p->dp_max - opt->pen_unpair * opt->a) {
 				mb128_t *p = &a[n_res++];
 				p->x = (uint64_t)h0[i].p->dp_max << 32 | h0[i].hash;
 				p->y = i << 1 | r;
@@ -338,8 +347,15 @@ static int32_t mb_matesw(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_
 	ez.m_cigar = 16;
 	ez.cigar = Kmalloc(km, uint32_t, ez.m_cigar);
 	for (i = n_res - 1; i >= 0; --i) {
-		int32_t r = a[i].y&1, j = a[i].y>>1;
-		mb_matesw_core(km, opt, l2b, pes, &ha[r].a[j], r, qlen[!r], qs[!r], &ha[!r], &ez);
+		int32_t sc, r = a[i].y&1, j = a[i].y>>1;
+		const mb_hit_t *h0 = &ha[r].a[j], *h1;
+		h1 = mb_matesw_core(km, opt, l2b, pes, h0, r, qlen[!r], qs[!r], &ha[!r], &ez);
+		if (h1) { // rescue successful
+			sc = mb_pair_score(h0, h1, pes, opt->a);
+			if (sc > max) max2 = max, max = sc;
+			else if (sc > max2) max2 = sc;
+			if (max == max2) break;
+		}
 	}
 	kfree(km, ez.cigar);
 	kfree(km, qs[0][0]);
@@ -360,7 +376,7 @@ void mb_pair(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_t n_hit[2], 
 	do_matesw = paux.n_pp > 0 && paux.score == paux.sub_sc? 0 : 1; // skip mate rescue if we see two equally best pairs
 	if (do_matesw && opt->max_rescue > 0) {
 		int32_t sub_diff = opt->a + opt->b > opt->q + opt->e? opt->a + opt->b : opt->q + opt->e;
-		if (mb_matesw(km, opt, l2b, n_hit, hit, pes, qlen, qseq) > 0) {
+		if (mb_matesw(km, opt, l2b, n_hit, hit, pes, &paux, qlen, qseq) > 0) {
 			for (r = 0; r < 2; ++r) {
 				for (i = 0; i < n_hit[r]; ++i) {
 					mb_hit_t *h = &hit[r][i];
