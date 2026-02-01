@@ -179,6 +179,39 @@ static void mb_pair_hits(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_
 	kfree(km, pa);
 }
 
+static int32_t mb_ungap(void *km, int32_t qlen, const uint8_t *qseq, int32_t tlen, const uint8_t *tseq, int32_t kmer, int32_t *max_i, int32_t *n_good)
+{
+	int32_t i, l, cap = 1 << kmer*2, mask = cap - 1, max, *a;
+	uint16_t *h, x;
+	*max_i = -1, *n_good = 0;
+	if (qlen >= UINT16_MAX) return 0;
+	a = Kcalloc(km, int32_t, tlen);
+	h = Kcalloc(km, uint16_t, cap);
+	for (i = l = 0, x = 0; i < qlen; ++i) {
+		if (qseq[i] < 4) {
+			x = (x << 2 | qseq[i]) & mask;
+			if (++l >= kmer) h[x] = i;
+		} else x = 0, l = 0;
+	}
+	for (i = l = 0, x = 0; i < tlen; ++i) {
+		if (tseq[i] < 4) {
+			x = (x << 2 | tseq[i]) & mask;
+			if (++l >= kmer) {
+				if (h[x] > 0 && i >= h[x])
+					++a[i - h[x]];
+			}
+		} else x = 0, l = 0;
+	}
+	for (i = 0, max = 0; i < tlen; ++i)
+		if (max < a[i])
+			max = a[i], *max_i = i;
+	for (i = 0, n_good = 0; i < tlen; ++i)
+		if (a[i] > max>>1) ++*n_good;
+	kfree(km, h);
+	kfree(km, a);
+	return max;
+}
+
 static void mb_matesw_align(void *km, const mb_opt_t *opt, int32_t qlen, uint8_t *qseq, int32_t tlen, uint8_t *tseq, mb_hit_t *h, ksw_extz_t *ez)
 {
 	int8_t mat[25];
@@ -270,21 +303,32 @@ static const mb_hit_t *mb_matesw_core(void *km, const mb_opt_t *opt, const l2b_t
 		if (ts < 0) ts = 0;
 		if (te > l2b->ctg[h0->tid].len) te = l2b->ctg[h0->tid].len;
 		if (te - ts > len) {
+			int64_t ts2 = ts, te2 = te;
+			int32_t max_ug, max_i, n_good;
 			uint8_t *ref;
 			mb_hit_t ht;
+			ht.p = 0;
 			ref = Kmalloc(km, uint8_t, te - ts);
 			l2b_getseq(l2b, h0->tid, ts, te, ref);
-			mb_matesw_align(km, opt, len, seq[is_rev], te - ts, ref, &ht, ez);
+			max_ug = mb_ungap(km, len, seq[is_rev], te - ts, ref, 7, &max_i, &n_good);
+			if (max_ug >= 10 && max_ug >= len>>1 && n_good == 1) {
+				ts2 = ts + max_i - len / 2;
+				te2 = ts2 + len * 2;
+				if (ts2 < ts) ts2 = ts;
+				if (te2 > te) te2 = te;
+			}
+			if (max_ug >= 10)
+				mb_matesw_align(km, opt, len, seq[is_rev], te2 - ts2, &ref[ts2 - ts], &ht, ez);
 			if (ht.p) { // a good hit found
 				ht.tid = h0->tid;
-				ht.ts += ts, ht.te += ts;
+				ht.ts += ts2, ht.te += ts2;
 				ht.rev = is_rev;
 				if (is_rev) {
 					int32_t qt = ht.qs;
 					ht.qs = len - ht.qe;
 					ht.qe = len - qt;
 				}
-				//fprintf(stderr, "X\t%s\tscore0=%d\tnewts=%ld\n", l2b->ctg[ht.tid].name, h0->p->dp_max, (long)ht.ts);
+				//fprintf(stderr, "X\t%s\tsc0=%d\tnew_sc=%d\tnew_ts=%ld\tn_cigar=%d\tcigar[0]=%d\n", l2b->ctg[ht.tid].name, h0->p->dp_max, ht.p->dp_max, (long)ht.ts, ht.p->n_cigar, ht.p->cigar[0]>>4);
 				if (h1->n == h1->m) kom_grow(mb_hit_t, h1->a, h1->n, h1->m);
 				h1->a[h1->n++] = ht;
 				ret = &h1->a[h1->n - 1];
