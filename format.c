@@ -1,5 +1,13 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include "mbpriv.h"
 #include "kommon.h"
+
+static char mb_rg_id[256];
+
+/**************
+ * PAF output *
+ **************/
 
 void mb_fmt_paf(void *km, kstring_t *s, const l2b_t *l2b, const mb_bseq1_t *t, const mb_hit_t *p, uint64_t opt_flag, int n_seg, int seg_idx)
 {
@@ -30,4 +38,80 @@ void mb_fmt_paf(void *km, kstring_t *s, const l2b_t *l2b, const mb_bseq1_t *t, c
 	if ((opt_flag & MB_F_COPY_COMMENT) && t->comment)
 		kom_sprintf_lite(s, "\t%s", t->comment);
 	kom_sprintf_lite(s, "\n");
+}
+
+/**************
+ * SAM header *
+ **************/
+
+static char *mb_escape(char *s)
+{
+	char *p, *q;
+	for (p = q = s; *p; ++p) {
+		if (*p == '\\') {
+			++p;
+			if (*p == 't') *q++ = '\t';
+			else if (*p == '\\') *q++ = '\\';
+		} else *q++ = *p;
+	}
+	*q = '\0';
+	return s;
+}
+
+static int sam_write_rg_line(kstring_t *str, const char *s)
+{
+	char *p, *q, *r, *rg_line = 0;
+	memset(mb_rg_id, 0, 256);
+	if (s == 0) return 0;
+	if (strstr(s, "@RG") != s) {
+		if (kom_verbose >= 1) fprintf(stderr, "[ERROR] the read group line is not started with @RG\n");
+		goto err_set_rg;
+	}
+	if (strstr(s, "\t") != NULL) {
+		if (kom_verbose >= 1) fprintf(stderr, "[ERROR] the read group line contained literal <tab> characters -- replace with escaped tabs: \\t\n");
+		goto err_set_rg;
+	}
+	rg_line = kom_strdup(s);
+	mb_escape(rg_line);
+	if ((p = strstr(rg_line, "\tID:")) == 0) {
+		if (kom_verbose >= 1) fprintf(stderr, "[ERROR] no ID within the read group line\n");
+		goto err_set_rg;
+	}
+	p += 4;
+	for (q = p; *q && *q != '\t' && *q != '\n'; ++q);
+	if (q - p + 1 > 256) {
+		if (kom_verbose >= 1) fprintf(stderr, "[ERROR] @RG:ID is longer than 255 characters\n");
+		goto err_set_rg;
+	}
+	for (q = p, r = mb_rg_id; *q && *q != '\t' && *q != '\n'; ++q)
+		*r++ = *q;
+	kom_sprintf_lite(str, "%s\n", rg_line);
+	return 0;
+
+err_set_rg:
+	free(rg_line);
+	return -1;
+}
+
+int mb_fmt_sam_hdr(kstring_t *str, const l2b_t *idx, const char *rg, const char *ver, int argc, char *argv[])
+{
+	int i, ret = 0;
+	str->l = 0;
+	kom_sprintf_lite(str, "@HD\tVN:1.6\tSO:unsorted\tGO:query\n");
+	if (idx)
+		for (i = 0; i < idx->n_ctg; ++i)
+			kom_sprintf_lite(str, "@SQ\tSN:%s\tLN:%ld\n", idx->ctg[i].name, idx->ctg[i].len);
+	if (rg) ret = sam_write_rg_line(str, rg);
+	kom_sprintf_lite(str, "@PG\tID:minibwa\tPN:minibwa");
+	if (ver) kom_sprintf_lite(str, "\tVN:%s", ver);
+	if (argc > 1) {
+		kom_sprintf_lite(str, "\tCL:minibwa");
+		for (i = 1; i < argc; ++i)
+			kom_sprintf_lite(str, " %s", argv[i]);
+	}
+	return ret;
+}
+
+void mb_fmt_sam(void *km, kstring_t *s, const l2b_t *l2b, const mb_bseq1_t *t, int32_t n_hit, const mb_hit_t *hit, int32_t hit_idx, int64_t opt_flag, int32_t n_seg, int seg_idx)
+{
 }

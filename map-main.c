@@ -327,11 +327,11 @@ static inline void yes_or_no(mb_opt_t *opt, uint64_t flag, int long_idx, const c
 #endif
 int main_map(int argc, char *argv[])
 {
-	const char *opt_str = "x:o:k:c:m:p:A:B:b:O:E:t:K:N:CPy";
+	const char *opt_str = "x:o:k:c:m:p:A:B:b:O:E:t:K:N:CPyR:a";
 	int32_t c;
 	mb_idx_t *idx;
 	mb_opt_t mo;
-	char *fn_out = 0;
+	char *fn_out = 0, *rg_line = 0;
 	ketopt_t o = KETOPT_INIT;
 
 	mb_opt_init(&mo);
@@ -358,12 +358,14 @@ int main_map(int argc, char *argv[])
 		else if (c == 'N') mo.best_n = atoi(o.arg);
 		else if (c == 'A') mo.a = atoi(o.arg);
 		else if (c == 'B') mo.b = atoi(o.arg);
+		else if (c == 'a') mo.flag |= MB_F_SAM;
 		else if (c == 'C') mo.flag |= MB_F_NO_ALN;
 		else if (c == 'y') mo.flag |= MB_F_COPY_COMMENT;
 		else if (c == 'P') mo.flag &= ~MB_F_PE;
 		else if (c == 'o') fn_out = o.arg;
 		else if (c == 't') mo.n_thread = atoi(o.arg);
 		else if (c == 'K') mo.mb_size = kom_parse_num(o.arg, 0);
+		else if (c == 'R') rg_line = o.arg;
 		else if (c == 301) { // --no-kalloc
 			mo.flag |= MB_F_NO_KALLOC;
 		} else if (c == 302) { // --outn
@@ -400,6 +402,16 @@ int main_map(int argc, char *argv[])
 
 	idx = mb_idx_load(argv[o.ind]);
 	kom_assert(idx, "failed to load the index.");
+
+	if (mo.flag & MB_F_SAM) {
+		int ret;
+		kstring_t out = {0,0,0};
+		ret = mb_fmt_sam_hdr(&out, idx->l2b, rg_line, MB_VERSION, argc, argv);
+		if (ret < 0) return 1; // TODO: free idx and out.s
+		puts(out.s);
+		free(out.s);
+	}
+
 	mb_map_file(&mo, idx, argc - (o.ind + 1), (const char**)&argv[o.ind+1], fn_out);
 	mb_idx_destroy(idx);
 	return 0;
