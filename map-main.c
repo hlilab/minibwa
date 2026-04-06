@@ -185,16 +185,17 @@ static void *worker_pipeline(void *shared, int step, void *in)
 		if (!(opt->flag & MB_F_NO_KALLOC)) km = km_init();
 
 		for (k = 0; k < s->n_frag; ++k) {
-			int32_t seg_st = s->seg_off[k], seg_en = s->seg_off[k] + s->seg_cnt[k], n_sec = 0;
+			int32_t seg_st = s->seg_off[k], seg_en = s->seg_off[k] + s->seg_cnt[k];
 			out.l = 0;
 			for (i = seg_st; i < seg_en; ++i) {
 				mb_bseq1_t *t = &s->seq[i];
 				if (s->n_hit[i] > 0) { // the query has at least one hit
+					int32_t n_sec = 0;
 					for (j = 0; j < s->n_hit[i]; ++j) {
 						const mb_hit_t *h = &s->hit[i][j];
 						if (h->parent == h->id || n_sec < opt->out_n)
 							mb_format(km, &out, idx->l2b, t, seg_en - seg_st, &s->n_hit[seg_st], &s->hit[seg_st], j, opt->flag, i - seg_st);
-						if (h->parent != h->id) ++n_sec;
+						n_sec += (h->parent != h->id);
 					}
 				} else if (!(opt->flag & MB_F_NO_UNMAP)) { // TODO: output unmapped reads
 				}
@@ -406,7 +407,7 @@ int main_map(int argc, char *argv[])
 		kstring_t out = {0,0,0};
 		ret = mb_fmt_sam_hdr(&out, idx->l2b, rg_line, MB_VERSION, argc, argv);
 		if (ret < 0) return 1; // TODO: free idx and out.s
-		puts(out.s);
+		fwrite(out.s, 1, out.l, stdout);
 		free(out.s);
 	}
 

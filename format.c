@@ -114,6 +114,7 @@ int mb_fmt_sam_hdr(kstring_t *str, const l2b_t *idx, const char *rg, const char 
 		for (i = 1; i < argc; ++i)
 			kom_sprintf_lite(str, " %s", argv[i]);
 	}
+	kom_sprintf_lite(str, "\n");
 	return ret;
 }
 
@@ -200,15 +201,11 @@ void mb_fmt_sam(void *km, kstring_t *s, const l2b_t *l2b, const mb_bseq1_t *t, i
 	// find the primary of the previous and the next segments, if they are mapped
 	if (n_seg > 1) {
 		int next_sid = (seg_idx + 1) % n_seg;
-		r_next = get_sam_pri(n_hit[next_sid], hit[next_sid]);
-		r_prev = r_next;
+		r_prev = r_next = get_sam_pri(n_hit[next_sid], hit[next_sid]);
 	} else r_prev = r_next = NULL;
 
-	// write QNAME
-	s->l = 0;
+	// write QNAME and FLAG
 	kom_sprintf_lite(s, "%s", t->name);
-
-	// write flag
 	flag = n_seg > 1? 0x1 : 0x0;
 	if (r == 0) {
 		flag |= 0x4;
@@ -218,7 +215,7 @@ void mb_fmt_sam(void *km, kstring_t *s, const l2b_t *l2b, const mb_bseq1_t *t, i
 		else if (!r->sam_pri) flag |= 0x800;
 	}
 	if (n_seg > 1) {
-		if (r && r->proper_pair) flag |= 0x2; // TODO: this doesn't work when there are more than 2 segments
+		if (r && r->proper_pair) flag |= 0x2;
 		if (seg_idx == 0) flag |= 0x40;
 		else if (seg_idx == n_seg - 1) flag |= 0x80;
 		if (r_next == NULL) flag |= 0x8;
