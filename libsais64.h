@@ -74,33 +74,6 @@ extern "C" {
     LIBSAIS64_API int64_t libsais64_omp(const uint8_t * T, int64_t * SA, int64_t n, int64_t fs, int64_t * freq, int64_t threads);
 #endif
 
-    /**
-    * Constructs the burrows-wheeler transformed string (BWT) of a given string.
-    * @param T [0..n-1] The input string.
-    * @param U [0..n-1] The output string (can be T).
-    * @param A [0..n-1+fs] The temporary array.
-    * @param n The length of the given string.
-    * @param fs The extra space available at the end of A array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @return The primary index if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS64_API int64_t libsais64_bwt(const uint8_t * T, uint8_t * U, int64_t * A, int64_t n, int64_t fs, int64_t * freq);
-
-#if defined(LIBSAIS_OPENMP)
-    /**
-    * Constructs the burrows-wheeler transformed string (BWT) of a given string in parallel using OpenMP.
-    * @param T [0..n-1] The input string.
-    * @param U [0..n-1] The output string (can be T).
-    * @param A [0..n-1+fs] The temporary array.
-    * @param n The length of the given string.
-    * @param fs The extra space available at the end of A array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).
-    * @return The primary index if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS64_API int64_t libsais64_bwt_omp(const uint8_t * T, uint8_t * U, int64_t * A, int64_t n, int64_t fs, int64_t * freq, int64_t threads);
-#endif
-
 #ifdef __cplusplus
 }
 #endif

@@ -50,29 +50,6 @@ extern "C" {
     #include <stdint.h>
 
     /**
-    * Creates the libsais context that allows reusing allocated memory with each libsais operation. 
-    * In multi-threaded environments, use one context per thread for parallel executions.
-    * @return the libsais context, NULL otherwise.
-    */
-    LIBSAIS_API void * libsais_create_ctx(void);
-
-#if defined(LIBSAIS_OPENMP)
-    /**
-    * Creates the libsais context that allows reusing allocated memory with each parallel libsais operation using OpenMP. 
-    * In multi-threaded environments, use one context per thread for parallel executions.
-    * @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).
-    * @return the libsais context, NULL otherwise.
-    */
-    LIBSAIS_API void * libsais_create_ctx_omp(int32_t threads);
-#endif
-
-    /**
-    * Destroys the libsass context and free previusly allocated memory.
-    * @param ctx The libsais context (can be NULL).
-    */
-    LIBSAIS_API void libsais_free_ctx(void * ctx);
-
-    /**
     * Constructs the suffix array of a given string.
     * @param T [0..n-1] The input string.
     * @param SA [0..n-1+fs] The output array of suffixes.
@@ -82,17 +59,6 @@ extern "C" {
     * @return 0 if no error occurred, -1 or -2 otherwise.
     */
     LIBSAIS_API int32_t libsais(const uint8_t * T, int32_t * SA, int32_t n, int32_t fs, int32_t * freq);
-
-    /**
-    * Constructs the generalized suffix array (GSA) of given string set.
-    * @param T [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).
-    * @param SA [0..n-1+fs] The output array of suffixes.
-    * @param n The length of the given string set.
-    * @param fs The extra space available at the end of SA array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @return 0 if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS_API int32_t libsais_gsa(const uint8_t * T, int32_t * SA, int32_t n, int32_t fs, int32_t * freq);
 
     /**
     * Constructs the suffix array of a given integer array.
@@ -105,30 +71,6 @@ extern "C" {
     * @return 0 if no error occurred, -1 or -2 otherwise.
     */
     LIBSAIS_API int32_t libsais_int(int32_t * T, int32_t * SA, int32_t n, int32_t k, int32_t fs);
-
-    /**
-    * Constructs the suffix array of a given string using libsais context.
-    * @param ctx The libsais context.
-    * @param T [0..n-1] The input string.
-    * @param SA [0..n-1+fs] The output array of suffixes.
-    * @param n The length of the given string.
-    * @param fs The extra space available at the end of SA array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @return 0 if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS_API int32_t libsais_ctx(const void * ctx, const uint8_t * T, int32_t * SA, int32_t n, int32_t fs, int32_t * freq);
-
-    /**
-    * Constructs the generalized suffix array (GSA) of given string set using libsais context.
-    * @param ctx The libsais context.
-    * @param T [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).
-    * @param SA [0..n-1+fs] The output array of suffixes.
-    * @param n The length of the given string set.
-    * @param fs The extra space available at the end of SA array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @return 0 if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS_API int32_t libsais_gsa_ctx(const void * ctx, const uint8_t * T, int32_t * SA, int32_t n, int32_t fs, int32_t * freq);
 
 #if defined(LIBSAIS_OPENMP)
     /**
@@ -144,18 +86,6 @@ extern "C" {
     LIBSAIS_API int32_t libsais_omp(const uint8_t * T, int32_t * SA, int32_t n, int32_t fs, int32_t * freq, int32_t threads);
 
     /**
-    * Constructs the generalized suffix array (GSA) of given string set in parallel using OpenMP.
-    * @param T [0..n-1] The input string set using 0 as separators (T[n-1] must be 0).
-    * @param SA [0..n-1+fs] The output array of suffixes.
-    * @param n The length of the given string set.
-    * @param fs The extra space available at the end of SA array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).
-    * @return 0 if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS_API int32_t libsais_gsa_omp(const uint8_t * T, int32_t * SA, int32_t n, int32_t fs, int32_t * freq, int32_t threads);
-
-    /**
     * Constructs the suffix array of a given integer array in parallel using OpenMP.
     * Note, during construction input array will be modified, but restored at the end if no errors occurred.
     * @param T [0..n-1] The input integer array.
@@ -167,90 +97,6 @@ extern "C" {
     * @return 0 if no error occurred, -1 or -2 otherwise.
     */
     LIBSAIS_API int32_t libsais_int_omp(int32_t * T, int32_t * SA, int32_t n, int32_t k, int32_t fs, int32_t threads);
-#endif
-
-    /**
-    * Constructs the burrows-wheeler transformed string (BWT) of a given string.
-    * @param T [0..n-1] The input string.
-    * @param U [0..n-1] The output string (can be T).
-    * @param A [0..n-1+fs] The temporary array.
-    * @param n The length of the given string.
-    * @param fs The extra space available at the end of A array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @return The primary index if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS_API int32_t libsais_bwt(const uint8_t * T, uint8_t * U, int32_t * A, int32_t n, int32_t fs, int32_t * freq);
-
-    /**
-    * Constructs the burrows-wheeler transformed string (BWT) of a given string with auxiliary indexes.
-    * @param T [0..n-1] The input string.
-    * @param U [0..n-1] The output string (can be T).
-    * @param A [0..n-1+fs] The temporary array.
-    * @param n The length of the given string.
-    * @param fs The extra space available at the end of A array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @param r The sampling rate for auxiliary indexes (must be power of 2).
-    * @param I [0..(n-1)/r] The output auxiliary indexes.
-    * @return 0 if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS_API int32_t libsais_bwt_aux(const uint8_t * T, uint8_t * U, int32_t * A, int32_t n, int32_t fs, int32_t * freq, int32_t r, int32_t * I);
-
-    /**
-    * Constructs the burrows-wheeler transformed string (BWT) of a given string using libsais context.
-    * @param ctx The libsais context.
-    * @param T [0..n-1] The input string.
-    * @param U [0..n-1] The output string (can be T).
-    * @param A [0..n-1+fs] The temporary array.
-    * @param n The length of the given string.
-    * @param fs The extra space available at the end of A array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @return The primary index if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS_API int32_t libsais_bwt_ctx(const void * ctx, const uint8_t * T, uint8_t * U, int32_t * A, int32_t n, int32_t fs, int32_t * freq);
-
-    /**
-    * Constructs the burrows-wheeler transformed string (BWT) of a given string with auxiliary indexes using libsais context.
-    * @param ctx The libsais context.
-    * @param T [0..n-1] The input string.
-    * @param U [0..n-1] The output string (can be T).
-    * @param A [0..n-1+fs] The temporary array.
-    * @param n The length of the given string.
-    * @param fs The extra space available at the end of A array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @param r The sampling rate for auxiliary indexes (must be power of 2).
-    * @param I [0..(n-1)/r] The output auxiliary indexes.
-    * @return 0 if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS_API int32_t libsais_bwt_aux_ctx(const void * ctx, const uint8_t * T, uint8_t * U, int32_t * A, int32_t n, int32_t fs, int32_t * freq, int32_t r, int32_t * I);
-
-#if defined(LIBSAIS_OPENMP)
-    /**
-    * Constructs the burrows-wheeler transformed string (BWT) of a given string in parallel using OpenMP.
-    * @param T [0..n-1] The input string.
-    * @param U [0..n-1] The output string (can be T).
-    * @param A [0..n-1+fs] The temporary array.
-    * @param n The length of the given string.
-    * @param fs The extra space available at the end of A array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).
-    * @return The primary index if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS_API int32_t libsais_bwt_omp(const uint8_t * T, uint8_t * U, int32_t * A, int32_t n, int32_t fs, int32_t * freq, int32_t threads);
-
-    /**
-    * Constructs the burrows-wheeler transformed string (BWT) of a given string with auxiliary indexes in parallel using OpenMP.
-    * @param T [0..n-1] The input string.
-    * @param U [0..n-1] The output string (can be T).
-    * @param A [0..n-1+fs] The temporary array.
-    * @param n The length of the given string.
-    * @param fs The extra space available at the end of A array (0 should be enough for most cases).
-    * @param freq [0..255] The output symbol frequency table (can be NULL).
-    * @param r The sampling rate for auxiliary indexes (must be power of 2).
-    * @param I [0..(n-1)/r] The output auxiliary indexes.
-    * @param threads The number of OpenMP threads to use (can be 0 for OpenMP default).
-    * @return 0 if no error occurred, -1 or -2 otherwise.
-    */
-    LIBSAIS_API int32_t libsais_bwt_aux_omp(const uint8_t * T, uint8_t * U, int32_t * A, int32_t n, int32_t fs, int32_t * freq, int32_t r, int32_t * I, int32_t threads);
 #endif
 
 #ifdef __cplusplus
