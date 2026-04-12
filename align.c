@@ -559,8 +559,10 @@ static void mb_align1(void *km, const mb_opt_t *opt, const mb_idx_t *mi, int qle
 	if (r->cnt == 0) return;
 	ksw_gen_nt4_mat(mat, opt->a, opt->b, opt->b_ts, opt->b_ambi);
 	bw = (int)(opt->bw * 1.5 + 1.);
-	bw_long = (int)(opt->bw_long * 1.5 + 1.);
-	if (bw_long < bw) bw_long = bw;
+	if (!is_sr) {
+		bw_long = (int)(opt->bw_long * 1.5 + 1.);
+		if (bw_long < bw) bw_long = bw;
+	} else bw_long = bw; // disable long gap in the short-read mode
 
 	if (is_sr) {
 		mb_max_stretch(r, a, &as1, &cnt1);

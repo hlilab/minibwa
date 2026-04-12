@@ -509,8 +509,10 @@ static void mb_dbg_anchor(const mb_idx_t *idx, int qlen, int64_t n, const mb_anc
 
 mb_hit_t *mb_map_sai(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, const uint8_t *seq, mb_sai_v *u, int32_t *n_hit_, mb_tbuf_t *b, const char *qname)
 {
+	const int32_t min_rechain_len = 1000;
+	const double min_rechain_ratio = 0.1;
 	uint32_t hash;
-	int32_t i, n_hit, hi_cov;
+	int32_t i, n_hit, hi_cov, is_sr;
 	int32_t sub_diff = opt->a + opt->b > opt->q + opt->e? opt->a + opt->b : opt->q + opt->e;
 	uint64_t *w;
 	float chn_pen_gap;
@@ -526,17 +528,39 @@ mb_hit_t *mb_map_sai(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, con
 	hash ^= mb_hash64(qlen) + mb_hash64(opt->seed);
 	hash  = mb_hash64(hash);
 	hi_cov = mb_cal_high_cov(b->km, u->n, u->a, opt->max_occ);
+	is_sr = mb_is_sr_mode(opt, qlen);
 
-	// initial chaining
+	// collect anchors
 	chn_pen_gap = opt->chain_gap_scale * .01 * opt->min_len;
 	if (kom_dbg_flag & MB_DBG_SEED) mb_dbg_seed(u->n, u->a, qname);
 	mb_anchor(b->km, idx, u, qlen, opt->max_occ, &v);
+	kfree(b->km, u->a); // no longer needed
+	u->n = 0, u->a = 0;
+
+	// initial chaining
 	if (kom_dbg_flag & MB_DBG_ANCHOR) mb_dbg_anchor(idx, qlen, v.n, v.a, qname);
 	a = mb_lchain_dp(b->km, opt->max_gap, opt->max_gap, opt->bw, opt->max_chain_skip, opt->max_chain_iter,
 					 opt->min_chain_score, chn_pen_gap, v.n, v.a, &n_hit, &w);
 	v.a = 0; v.n = v.m = 0; // ownership transferred to a
-	kfree(b->km, u->a); // no longer needed
-	u->n = 0, u->a = 0;
+
+	// re-chaining
+	if (opt->bw_long > opt->bw * 2 && !is_sr && n_hit > 0) {
+		int64_t n_a, as, st, en;
+		int32_t best;
+		// chains in w[] are sorted by tpos of first anchor, not by score; find the best
+		for (i = 1, best = 0; i < n_hit; ++i)
+			if ((w[i] >> 32) > (w[best] >> 32)) best = i;
+		for (i = 0, as = 0; i < best; ++i) as += (int32_t)w[i];
+		st = a[as].qpos + 1 - a[as].len;
+		en = a[as + (int32_t)w[best] - 1].qpos + 1;
+		if (qlen - (en - st) > min_rechain_len && en - st > qlen * min_rechain_ratio) {
+			for (i = 0, n_a = 0; i < n_hit; ++i) n_a += (int32_t)w[i];
+			kfree(b->km, w);
+			mb_anchor_sort(idx->l2b, n_a, a);
+			a = mb_lchain_dp(b->km, opt->max_gap, opt->max_gap, opt->bw_long, opt->max_chain_skip, opt->max_chain_iter,
+							 opt->min_chain_score, chn_pen_gap, n_a, a, &n_hit, &w);
+		}
+	}
 
 	// chain ordering
 	hit = mb_gen_hit(b->km, hash, qlen, idx->l2b, n_hit, w, a);
@@ -552,7 +576,7 @@ mb_hit_t *mb_map_sai(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, con
 		mb_set_sam_pri(n_hit, hit);
 	}
 	for (i = 0; i < n_hit; ++i) hit[i].frac_high = (int32_t)(255. * hi_cov / qlen);
-	mb_set_mapq(b->km, n_hit, hit, opt->min_chain_score, opt->a, mb_is_sr_mode(opt, qlen));
+	mb_set_mapq(b->km, n_hit, hit, opt->min_chain_score, opt->a, is_sr);
 
 	// clean up
 	kfree(b->km, a);
