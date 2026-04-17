@@ -466,6 +466,6 @@ void mb_pair(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_t n_hit[2], 
 			}
 		}
 	}
-	mb_set_sam_pri(n_hit[0], hit[0]);
-	mb_set_sam_pri(n_hit[1], hit[1]);
+	mb_set_sam_pri(n_hit[0], hit[0], !!(opt->flag & MB_F_PRIMARY5));
+	mb_set_sam_pri(n_hit[1], hit[1], !!(opt->flag & MB_F_PRIMARY5));
 }

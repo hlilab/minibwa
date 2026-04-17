@@ -299,6 +299,7 @@ static int usage(FILE *fp, const mb_opt_t *opt)
 	fprintf(fp, "    -l NUM           treat reads <NUM as short reads in the adap mode [%d]\n", opt->max_sr_len);
 	fprintf(fp, "    -R STR           SAM read group line in a format like '@RG\\tID:foo\\tSM:bar' []\n");
 	fprintf(fp, "    -b STR           output a base alignment tag: cs, ds or MD []\n");
+	fprintf(fp, "    -5               take the alignment with the smallest query position as primary\n");
 	fprintf(fp, "  Mapping:\n");
 	fprintf(fp, "    -k INT           min seed length [%d]\n", opt->min_len);
 	fprintf(fp, "    -c NUM           max seed occurrences [%d]\n", opt->max_occ);
@@ -343,7 +344,7 @@ static inline void yes_or_no(mb_opt_t *opt, uint64_t flag, int long_idx, const c
 
 int main_map(int argc, char *argv[])
 {
-	const char *opt_str = "x:o:k:c:m:p:A:B:b:O:E:t:K:N:PyYR:aUl:r:w:W:g:b:";
+	const char *opt_str = "x:o:k:c:m:p:A:B:b:O:E:t:K:N:PyYR:aUl:r:w:W:g:b:5";
 	int32_t c;
 	mb_idx_t *idx;
 	mb_opt_t mo;
@@ -382,6 +383,7 @@ int main_map(int argc, char *argv[])
 		else if (c == 'U') mo.flag |= MB_F_NO_UNMAP;
 		else if (c == 'y') mo.flag |= MB_F_COPY_COMMENT;
 		else if (c == 'Y') mo.flag |= MB_F_SUPP_SOFT;
+		else if (c == '5') mo.flag |= MB_F_PRIMARY5;
 		else if (c == 'P') mo.flag &= ~MB_F_PE;
 		else if (c == 'o') fn_out = o.arg;
 		else if (c == 't') mo.n_thread = atoi(o.arg);

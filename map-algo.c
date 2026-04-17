@@ -248,7 +248,7 @@ void mb_sync_hits(void *km, int n_regs, mb_hit_t *regs)
 		else r->parent = MB_PARENT_UNSET;
 	}
 	kfree(km, tmp);
-	mb_set_sam_pri(n_regs, regs);
+	mb_set_sam_pri(n_regs, regs, 0); // this flag will be overwritten later anyway
 }
 
 /**********************************
@@ -327,15 +327,20 @@ add_primary:
 	kfree(km, w);
 }
 
-int mb_set_sam_pri(int n, mb_hit_t *r)
+void mb_set_sam_pri(int32_t n, mb_hit_t *r, int32_t is_primary5)
 {
-	int i, n_pri = 0;
-	for (i = 0; i < n; ++i)
-		if (r[i].id == r[i].parent) {
-			++n_pri;
-			r[i].sam_pri = (n_pri == 1);
-		} else r[i].sam_pri = 0;
-	return n_pri;
+	int32_t i, n_pri = 0, min_i = -1, min_qs = -1, first_i = -1;
+	if (n <= 0) return;
+	for (i = 0; i < n; ++i) {
+		r[i].sam_pri = 0;
+		if (r[i].id != r[i].parent) continue;
+		if (++n_pri == 1) first_i = i;
+		if (min_qs < 0 || r[i].qs < min_qs)
+			min_i = i, min_qs = r[i].qs;
+	}
+	assert(n_pri > 0);
+	if (is_primary5) r[min_i].sam_pri = 1;
+	else r[first_i].sam_pri = 1;
 }
 
 void mb_select_sub(void *km, float pri_ratio, int min_diff, int best_n, int *n_, mb_hit_t *r)
@@ -593,7 +598,7 @@ mb_hit_t *mb_map_sai(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, con
 		hit = mb_align_skeleton(b->km, opt, idx, qlen, seq, &n_hit, hit, a);
 		mb_set_parent(b->km, opt->mask_level, opt->mask_len, n_hit, hit, sub_diff, 0);
 		mb_select_sub(b->km, opt->pri_ratio, opt->min_len * 2, opt->best_n, &n_hit, hit);
-		mb_set_sam_pri(n_hit, hit);
+		mb_set_sam_pri(n_hit, hit, !!(opt->flag & MB_F_PRIMARY5));
 	}
 	for (i = 0; i < n_hit; ++i) hit[i].frac_high = (int32_t)(255. * hi_cov / qlen);
 	mb_set_mapq(b->km, qlen, n_hit, hit, opt->min_chain_score, opt->a, is_sr);

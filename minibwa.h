@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define MB_VERSION "0.0-r249-dirty"
+#define MB_VERSION "0.0-r250-dirty"
 
 #define MB_F_SAM              (0x1LL)       // output in the SAM format
 #define MB_F_NO_UNMAP         (0x2LL)       // output unmapped query sequences
@@ -20,6 +20,7 @@
 #define MB_F_2ND_SEQ          (0x1000LL)    // in SAM, write SEQ for secondary alignments
 #define MB_F_SUPP_SOFT        (0x2000LL)    // in SAM, use soft-clips for supplementary alignments
 #define MB_F_ADAP             (0x4000LL)    // adaptive mode
+#define MB_F_PRIMARY5         (0x8000LL)
 
 #define MB_CIGAR_MATCH      0
 #define MB_CIGAR_INS        1
