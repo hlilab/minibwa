@@ -19,6 +19,16 @@
 #define UNLIKELY(x) (x)
 #endif
 
+#ifndef Kgrow
+#define Kgrow(km, type, ptr, __i, __m) do { \
+		if ((__i) >= (__m)) { \
+			(__m) = (__i) + 1; \
+			(__m) += ((__m)>>1) + 16; \
+			(ptr) = (type*)krealloc(km, ptr, (__m) * sizeof(type)); \
+		} \
+	} while (0)
+#endif
+
 typedef struct {
 	int qlen, slen;
 	uint8_t shift, mdiff, max, size;
