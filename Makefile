@@ -22,10 +22,6 @@ ifneq ($(omp),0)
 	LIBS+=-fopenmp
 endif
 
-ifeq ($(mimalloc),)
-	CPPFLAGS+=-DHAVE_KALLOC
-endif
-
 ifeq ($(ARCH), x86_64)
 	CFLAGS+=-msse4.2 -mpopcnt
 endif
@@ -38,11 +34,14 @@ endif
 
 all:$(PROG)
 
+mimalloc.o:
+		$(CC) -c -std=gnu99 -O3 -Wall -Wextra -DNDEBUG -DMI_MALLOC_OVERRIDE -DMI_OSX_INTERPOSE=1 -DMI_OSX_ZONE=1 -Imimalloc mimalloc/static.c -o $@
+
 libminibwa.a:$(LOBJS)
 		$(AR) -csru $@ $(LOBJS)
 
-minibwa:libminibwa.a $(AOBJS) main.o
-		$(CC) $(CFLAGS) $(mimalloc) $(AOBJS) main.o -o $@ -L. -lminibwa $(LIBS)
+minibwa:libminibwa.a $(AOBJS) mimalloc.o main.o
+		$(CC) $(CFLAGS) mimalloc.o $(AOBJS) main.o -o $@ -L. -lminibwa $(LIBS)
 
 clean:
 		rm -fr *.o a.out $(PROG) *~ *.a *.dSYM
@@ -53,14 +52,16 @@ depend:
 # DO NOT DELETE
 
 QSufSort.o: QSufSort.h
-align.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h kalloc.h ksw2.h
-bseq.o: bseq.h kseq.h
+align.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h bseq.h kalloc.h ksw2.h
+bseq.o: bseq.h kommon.h kseq.h
 bwt.o: kommon.h kalloc.h bwt.h
 bwtgen.o: QSufSort.h
-cs.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h kalloc.h
-fastmap.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h ketopt.h kseq.h kalloc.h
-format.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h
+cs.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h bseq.h kalloc.h
+fastmap.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h bseq.h ketopt.h kseq.h
+fastmap.o: kalloc.h
+format.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h bseq.h
 index.o: libsais64.h kommon.h ketopt.h mbpriv.h minibwa.h l2bit.h bwt.h
+index.o: bseq.h
 kalloc.o: kalloc.h
 kommon.o: kommon.h
 ksw2_extd2_sse.o: ksw2.h
@@ -68,13 +69,13 @@ ksw2_extz2_sse.o: ksw2.h
 ksw2_ll_sse.o: ksw2.h
 kthread.o: kthread.h
 l2bit.o: kommon.h l2bit.h kseq.h
-lchain.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h kalloc.h ksort.h
+lchain.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h bseq.h kalloc.h ksort.h
 libsais.o: libsais.h
 libsais64.o: libsais.h libsais64.h
-main.o: kommon.h mbpriv.h minibwa.h l2bit.h bwt.h ketopt.h kseq.h
-map-algo.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h kalloc.h ksort.h
+main.o: kommon.h mbpriv.h minibwa.h l2bit.h bwt.h bseq.h ketopt.h kseq.h
+map-algo.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h bseq.h kalloc.h ksort.h
 map-main.o: kommon.h mbpriv.h minibwa.h l2bit.h bwt.h bseq.h kalloc.h
 map-main.o: kthread.h ketopt.h
 options.o: minibwa.h
-pe.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h kalloc.h ksw2.h
-seed.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h kalloc.h ksort.h
+pe.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h bseq.h kalloc.h ksw2.h
+seed.o: mbpriv.h minibwa.h l2bit.h bwt.h kommon.h bseq.h kalloc.h ksort.h
