@@ -15,9 +15,9 @@ minibwa map -a -5P ref.index reads.interleaved.fq > aln.sam   # align Hi-C short
 ## Introduction
 
 Minibwa aligns short reads against a reference genome. It is the successor of
-bwa-mem with a different algorithm. Minibwa is over three times as fast as the
-original bwa-mem and twice as fast as bwa-mem2 at comparable accuracy. While
-minibwa works with accurate long reads, minimap2 is more robust under high
+[bwa-mem][bwa] with a different algorithm. Minibwa is over three times as fast as the
+original bwa-mem and twice as fast as [bwa-mem2][bwa-mem2] at comparable accuracy. While
+minibwa works with accurate long reads, [minimap2][mm2] is more robust under high
 error rate.
 
 Minibwa is a hybrid of bwa-mem and minimap2: it indexes the genome with
@@ -32,16 +32,17 @@ structural changes anyway.
 
 ### Installation
 
-Minibwa requires either NEON or SSE4.2 and depends on [zlib][zlib] installed on
-your system. It also includes slightly modified source code of
-[mimalloc][mimalloc] and [libsais][libsais] which optionally uses OpenMP for
-multi-threading. You can build minibwa with
+Minibwa requires either SSE4.2 on x86 CPUs or NEON on ARM. It depends on
+[zlib][zlib] installed on your system and also includes slightly modified
+source code of [mimalloc][mimalloc] and [libsais][libsais] which optionally
+uses OpenMP for multi-threading. You can build minibwa with
 ```sh
 make             # automatically detect OpenMP and arm64 vs. x86_64
 make omp=0       # disable multi-threading in libsais (no effect on mapping)
 make gpl=0       # disable GPL'd code for low-memory BWT construction (no effect on mapping)
 make mimalloc=0  # disable mimalloc and use the system malloc+kalloc instead
 ```
+This produces a single binary `minibwa` which you can copy to your `PATH`.
 
 ### Usage
 
@@ -51,7 +52,7 @@ Like bwa-mem, minibwa requires to index the genome before read alignment.
 
 You can index the reference genome with
 ```sh
-minibwa index -t8 ref.fa     # index with 8 CPU threads, using 18N RAM (N is the genome size)
+minibwa index -t8 ref.fa     # index with 8 threads, using 18N RAM (N is the genome size)
 minibwa index ref.fa prefix  # use a different index prefix instead of ref.fa
 minibwa index -l ref.fa      # use less memory at the cost of performance
 ```
@@ -75,3 +76,6 @@ Minibwa does not support spliced alignment and has not been tested for genome al
 [zlib]: https://zlib.net/
 [mimalloc]: https://github.com/microsoft/mimalloc
 [libsais]: https://github.com/IlyaGrebnov/libsais
+[bwa]: https://github.com/lh3/bwa
+[mm2]: https://github.com/lh3/minimap2
+[bwa-mem2]: https://github.com/bwa-mem2/bwa-mem2
