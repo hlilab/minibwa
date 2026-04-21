@@ -30,6 +30,13 @@ structural changes anyway.
 
 ## Users' Guide
 
+### Intended use cases
+
+Minibwa is designed for mapping short reads and accurate long reads. It does
+not support spliced alignment and has not been tuned for aligning long contigs.
+For now, minibwa does not properly work with alternate contigs in the reference
+genome. Please use a version of the reference without such contigs.
+
 ### Installation
 
 Minibwa requires either SSE4.2 on x86 CPUs or NEON on ARM. It depends on
@@ -39,7 +46,7 @@ uses OpenMP for multi-threading. You can build minibwa with
 ```sh
 make             # automatically detect OpenMP and arm64 vs. x86_64
 make omp=0       # disable multi-threading in libsais (no effect on mapping)
-make gpl=0       # disable GPL'd code for low-memory BWT construction (no effect on mapping)
+make gpl=0       # disable GPL'd code for low-memory BWT building (no effect on mapping)
 make mimalloc=0  # disable mimalloc and use the system malloc+kalloc instead
 ```
 This produces a single binary `minibwa` which you can copy to your `PATH`.
@@ -66,12 +73,11 @@ individual read lengths. It works for both short and accurate long reads.
 ```sh
 minibwa map -at8 ref.fa read1.fq read2.fq   # map paired-end reads and output SAM
 minibwa map -t8 ref.fa read.fa.gz           # map single-end or long reads and output PAF
+minibwa map -5P ref.fa hic1.fq hic2.fq      # map Hi-C short reads
 ```
 Note in the default adaptive mode, `-g`/`-w`/`-W`/`-N`/`-m`/`-s` only changes
 the short-read setting; the long-read setting is fixed. This mode is disabled
 with `--adap=no` or when `-x sr` or `-x lr` is specified.
-
-Minibwa does not support spliced alignment and has not been tested for genome alignment.
 
 [zlib]: https://zlib.net/
 [mimalloc]: https://github.com/microsoft/mimalloc
