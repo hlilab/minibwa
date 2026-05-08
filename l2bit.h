@@ -5,6 +5,8 @@
 
 #define L2B_MAGIC "L2B\1"
 
+typedef enum { L2B_METH_NONE=0, L2B_METH_C2T, L2B_METH_G2A } l2b_meth_t;
+
 typedef struct {
 	char *name, *comm;
 	uint64_t len, off;
@@ -34,6 +36,7 @@ l2b_t *l2b_load(const char *fn);
 void l2b_destroy(l2b_t *l2b);
 int64_t l2b_intv2cid(const l2b_t *l2b, uint64_t st, uint64_t en, int64_t *cst, int *rev);
 int64_t l2b_getseq(const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, uint8_t *seq);
+int64_t l2b_getseq_meth(l2b_meth_t type, const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, uint8_t *seq);
 int64_t l2b_getambi(const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, int32_t *n_ambi);
 
 l2b_t *l2b_import(const char *fn, uint64_t seed);

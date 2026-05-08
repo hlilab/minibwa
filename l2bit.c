@@ -53,6 +53,21 @@ int64_t l2b_getseq(const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, uint8_
 	return en - st;
 }
 
+int64_t l2b_getseq_meth(l2b_meth_t type, const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, uint8_t *seq)
+{
+	int64_t i, len;
+	len = l2b_getseq(l2b, tid, st, en, seq);
+	if (len <= 0 || type == L2B_METH_NONE) return len;
+	if (type == L2B_METH_C2T) {
+		for (i = 0; i < len; ++i)
+			if (seq[i] == 1) seq[i] = 3; // C -> T
+	} else { // L2B_METH_G2A
+		for (i = 0; i < len; ++i)
+			if (seq[i] == 2) seq[i] = 0; // G -> A
+	}
+	return len;
+}
+
 int64_t l2b_getambi(const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, int32_t *n_ambi)
 {
 	int64_t g_beg, g_end, lo, hi, mid, i_st, i_en;
