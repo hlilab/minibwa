@@ -6,15 +6,10 @@
 #include "kseq.h"
 KSEQ_INIT(gzFile, gzread);
 
-int64_t l2b_intv2cid(const l2b_t *l2b, uint64_t st, uint64_t en, int64_t *cst, int *rev)
+static int64_t l2b_pos2cid(const l2b_t *l2b, int64_t s, int64_t len, int64_t *cst)
 {
-	int64_t s, lo = 0, hi = l2b->n_ctg, mid = (lo + hi) / 2;
+	int64_t lo = 0, hi = l2b->n_ctg, mid;
 	const l2b_ctg_t *ctg = 0;
-	assert(st < en);
-	if (en > l2b->tot_len * 2) return -3;
-	if (st < l2b->tot_len && l2b->tot_len < en) return -2;
-	*rev = (st >= l2b->tot_len);
-	s = st < l2b->tot_len? st : l2b->tot_len * 2 - en;
 	while (lo < hi) {
 		mid = (lo + hi) / 2;
 		ctg = &l2b->ctg[mid];
@@ -23,7 +18,34 @@ int64_t l2b_intv2cid(const l2b_t *l2b, uint64_t st, uint64_t en, int64_t *cst, i
 		else lo = mid;
 	}
 	*cst = s - ctg->off;
-	return s + (en - st) <= ctg->off + ctg->len? mid : -1;
+	return s + len <= ctg->off + ctg->len? mid : -1;
+}
+
+int64_t l2b_intv2cid(const l2b_t *l2b, uint64_t st, uint64_t en, int64_t *cst, int *rev)
+{
+	int64_t s;
+	assert(st < en);
+	if (en > l2b->tot_len * 2) return -3;
+	if (st < l2b->tot_len && l2b->tot_len < en) return -2;
+	*rev = (st >= l2b->tot_len);
+	s = st < l2b->tot_len? st : l2b->tot_len * 2 - en;
+	return l2b_pos2cid(l2b, s, en - st, cst);
+}
+
+int64_t l2b_intv2cid_meth(const l2b_t *l2b, uint64_t st, uint64_t en, l2b_meth_t *mt, int64_t *cst, int *rev)
+{
+	int64_t s, len = en - st;
+	int32_t copy;
+	uint64_t tot_len = l2b->tot_len;
+
+	assert(st < en);
+	if (en > tot_len * 4) return -3;
+	copy = st / tot_len; // 0: c2t_f, 1: g2a_f, 2: g2a_r, 3: c2t_r
+	*mt = (copy == 0 || copy == 3)? L2B_METH_C2T : L2B_METH_G2A;
+	*rev = (copy >= 2);
+	s = st - tot_len * copy;
+	if (copy >= 2) s = tot_len - len - s; // flip for reverse copies
+	return s < 0? -2 : l2b_pos2cid(l2b, s, len, cst);
 }
 
 int64_t l2b_getseq(const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, uint8_t *seq) // TODO: ambiguous bases
@@ -53,12 +75,12 @@ int64_t l2b_getseq(const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, uint8_
 	return en - st;
 }
 
-int64_t l2b_getseq_meth(l2b_meth_t type, const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, uint8_t *seq)
+int64_t l2b_getseq_meth(const l2b_t *l2b, int64_t tid, int64_t st, int64_t en, l2b_meth_t mt, uint8_t *seq)
 {
 	int64_t i, len;
 	len = l2b_getseq(l2b, tid, st, en, seq);
-	if (len <= 0 || type == L2B_METH_NONE) return len;
-	if (type == L2B_METH_C2T) {
+	if (len <= 0 || mt == L2B_METH_NONE) return len;
+	if (mt == L2B_METH_C2T) {
 		for (i = 0; i < len; ++i)
 			if (seq[i] == 1) seq[i] = 3; // C -> T
 	} else { // L2B_METH_G2A
@@ -297,6 +319,10 @@ load_failure:
 	l2b_destroy(l2b);
 	return 0;
 }
+
+/******************************
+ * Save .paf files for bwtgen *
+ ******************************/
 
 int l2b_save_pac(const char *fn, const l2b_t *l2b, int both_strand)
 {
