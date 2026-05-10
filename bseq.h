@@ -38,12 +38,6 @@ static inline int mb_qname_same(const char *s1, const char *s2)
 	return (l1 == l2 && strncmp(s1, s2, l1) == 0);
 }
 
-static inline void mb_revcomp_bseq(mb_bseq1_t *s)
-{
-	kom_revcomp(s->l_seq, s->seq);
-	if (s->qual) kom_reverse(char, s->l_seq, s->qual);
-}
-
 #ifdef __cplusplus
 }
 #endif

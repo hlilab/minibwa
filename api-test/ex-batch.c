@@ -41,6 +41,7 @@ int main(int argc, char *argv[])
 	char **seq, **name;
 
 	mb_opt_init(&opt);
+	opt.flag &= ~MB_F_PE; // disable paired-end mapping, which is the default
 	if (argc < 3) {
 		fprintf(stderr, "Usage: mbmap-batch <idxPrefix> <query.fa>\n");
 		return 1;

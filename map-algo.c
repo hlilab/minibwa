@@ -573,10 +573,7 @@ mb_hit_t *mb_map_sai(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, con
 	hash ^= mb_hash64(qlen) + mb_hash64(opt->seed);
 	hash  = mb_hash64(hash);
 	seq = kmalloc(b->km, qlen);
-	for (i = 0; i < qlen; ++i)
-		seq[i] = kom_nt4_table[(uint8_t)seq0[i]];
-	if (mt != L2B_METH_NONE) l2b_meth_convert(mt, qlen, seq);
-
+	for (i = 0; i < qlen; ++i) seq[i] = kom_nt4_table[(uint8_t)seq0[i]];
 	hi_cov = mb_cal_high_cov(b->km, u->n, u->a, opt->max_occ);
 	is_sr = mb_is_sr_mode(opt, qlen);
 
@@ -586,6 +583,7 @@ mb_hit_t *mb_map_sai(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, con
 	mb_anchor(b->km, idx, u, qlen, mt, opt->max_occ, &v);
 	kfree(b->km, u->a); // no longer needed
 	u->n = 0, u->a = 0;
+	v.n = mb_anchor_meth_flt(b->km, idx->l2b, mt, qlen, seq, v.n, v.a);
 
 	// initial chaining
 	if (kom_dbg_flag & MB_DBG_ANCHOR) mb_dbg_anchor(idx, qlen, v.n, v.a, qname);
@@ -619,6 +617,7 @@ mb_hit_t *mb_map_sai(const mb_opt_t *opt, const mb_idx_t *idx, int64_t qlen, con
 	mb_select_sub(b->km, opt->pri_ratio, opt->min_len * 2, opt->best_n, &n_hit, hit);
 
 	// base alignment
+	if (mt != L2B_METH_NONE) l2b_meth_convert(mt, qlen, seq);
 	if (!(opt->flag & MB_F_NO_ALN)) {
 		hit = mb_align_skeleton(b->km, opt, idx, qlen, seq, mt, &n_hit, hit, a);
 		mb_set_parent(b->km, opt->mask_level, opt->mask_len, n_hit, hit, sub_diff, 0);
