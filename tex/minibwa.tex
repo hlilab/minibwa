@@ -208,10 +208,13 @@ Please see \citet{Li:2024ac} for the proof of this algorithm.
 				\ElsIf{$u=2$}\Comment{stage 2: backward extension}
 					\If{$j<i$}\Comment{move to stage 3}
 						\State $Q.{\rm push}(3,P,i,i+\ell,(k,k',s))$
-					\ElsIf{$s\ge c$}\Comment{1-step backward ext.}
-						\State $Q.{\rm push}(2,P,i,j-1,${\sc BackExt}$((k,k',s),P[j]))$
-					\Else\Comment{no SMEM possible; back to stage 1}
-						\State $Q.{\rm push}(1,P,j+1,\cdot,\cdot)$
+					\Else
+						\State $(l,l',t)\gets${\sc BackExt}$((k,k',s),P[j])$
+						\If{$t\ge c$}\Comment{1-step backward ext.}
+							\State $Q.{\rm push}(2,P,i,j-1,(l,l',t))$
+						\Else\Comment{no SMEM possible; back to stage 1}
+							\State $Q.{\rm push}(1,P,j+1,\cdot,\cdot)$
+						\EndIf
 					\EndIf
 				\ElsIf{$u=3$}\Comment{stage 3: forward extension}
 					\If{$j=|P|$}\Comment{reach the end of $P$}
@@ -223,13 +226,18 @@ Please see \citet{Li:2024ac} for the proof of this algorithm.
 						\State $Q.{\rm push}(3,P,i,j+1,(l,l',t))$
 					\Else\Comment{move to stage 4}
 						\State Output $(P,i,j,(k,k',s))$\Comment{report an SMEM}
-						\State $Q.{\rm push}(4,P,i,j-1,(0,0,B))$
+						\State $Q.{\rm push}(4,P,i,j-1,(0,0,|B|))$
 					\EndIf
 				\ElsIf{$u=4$}\Comment{stage 4: backward ext. again}
-					\If{$s\ge c$}\Comment{1-step backward ext.}
-						\State $Q.{\rm push}(4,P,i,j-1,${\sc BackExt}$((k,k',s),P[j]))$
-					\Else\Comment{back to stage 1}
+					\If{$j\le i$}\Comment{back to stage 1}
 						\State $Q.{\rm push}(1,P,j+1,\cdot,\cdot)$
+					\Else
+						\State $(l,l',t)\gets${\sc BackExt}$((k,k',s),P[j])$
+						\If{$t\ge c$}\Comment{1-step backward ext.}
+							\State $Q.{\rm push}(4,P,i,j-1,(l,l',t))$
+						\Else\Comment{back to stage 1}
+							\State $Q.{\rm push}(1,P,j+1,\cdot,\cdot)$
+						\EndIf
 					\EndIf
 				\EndIf
 			\EndWhile
