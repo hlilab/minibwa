@@ -84,8 +84,7 @@ ksw_llrst_t ksw_ll_u8_core(void *q_, int tlen, const uint8_t *target, int _gapo,
 ksw_llrst_t ksw_ll_i16_core(void *q_, int tlen, const uint8_t *target, int _gapo, int _gape, int xtra);
 int ksw_ll_i16(void *q, int tlen, const uint8_t *target, int gapo, int gape, int *qe, int *te);
 
-void ksw_set_simd(void);
-void ksw_set_avx2(void);
+void ksw_set_simd(int level); // 0=auto, 1=SSE2, 2=SSE4.2, 3=AVX2
 
 #ifdef __cplusplus
 }

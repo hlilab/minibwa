@@ -301,6 +301,7 @@ static ko_longopt_t long_options[] = {
 	{ "chain-only",   ko_no_argument,       309 },
 	{ "meth",         ko_no_argument,       310 },
 	{ "hic",          ko_no_argument,       311 },
+	{ "simd",         ko_required_argument, 312 },
 	{ "dbg-aln-seq",  ko_no_argument,       601 },
 	{ "dbg-anchor",   ko_no_argument,       602 },
 	{ "dbg-seed",     ko_no_argument,       603 },
@@ -372,8 +373,7 @@ static inline void yes_or_no(mb_opt_t *opt, uint64_t flag, int long_idx, const c
 
 int main_map(int argc, char *argv[])
 {
-	extern int ksw_set_simd(void);
-	extern int ksw_set_avx2(void);
+	extern int ksw_set_simd(int level);
 	const char *opt_str = "x:o:k:c:m:p:A:B:U:b:O:E:t:K:N:PyYR:aul:w:W:g:5s:";
 	int32_t c;
 	mb_idx_t *idx;
@@ -381,8 +381,7 @@ int main_map(int argc, char *argv[])
 	char *fn_out = 0, *rg_line = 0, *s;
 	ketopt_t o = KETOPT_INIT;
 
-	ksw_set_simd();
-	ksw_set_avx2();
+	ksw_set_simd(0);
 	mb_opt_init(&mo);
 	while ((c = ketopt(&o, argc, argv, 1, opt_str, long_options)) >= 0) { // test command line options and apply option -x/preset first
 		if (c == 'x') {
@@ -477,6 +476,11 @@ int main_map(int argc, char *argv[])
 				mo.flag |= MB_F_WRITE_CS;
 				fprintf(stderr, "[WARNING]\033[1;31m -b only takes 'cs', 'ds' or 'MD'. Invalid values are assumed to be 'cs'.\033[0m\n");
 			}
+		} else if (c == 312) { // --simd
+			if (strcmp(o.arg, "sse") == 0) ksw_set_simd(2); // SSE4.2
+			else if (strcmp(o.arg, "avx2") == 0) ksw_set_simd(3); // AVX2
+			else if (kom_verbose >= 2)
+				fprintf(stderr, "[WARNING]\033[1;31m --simd only accepts 'sse' or 'avx2'.\033[0m\n");
 		} else if (c == 901) { // --version
 			puts(MB_VERSION);
 			exit(0);

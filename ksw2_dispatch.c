@@ -69,16 +69,14 @@ int ksw_x86_simd(void)
 #endif
 }
 
-void ksw_set_simd(void)
+void ksw_set_simd(int level)
 {
 	ksw_x86_simd_flag = ksw_x86_simd();
-}
-
-void ksw_set_avx2(void)
-{
-	ksw_x86_simd_flag = ksw_x86_simd();
-	if (ksw_x86_simd_flag >= 0)
-		ksw_x86_simd_flag |= SIMD_SSE|SIMD_SSE2|SIMD_SSE3|SIMD_SSSE3|SIMD_SSE4_1|SIMD_SSE4_2|SIMD_AVX|SIMD_AVX2;
+	if (level > 0) {
+		if (level >= 1) ksw_x86_simd_flag |= SIMD_SSE|SIMD_SSE2;
+		if (level >= 2) ksw_x86_simd_flag |= SIMD_SSE3|SIMD_SSSE3|SIMD_SSE4_1|SIMD_SSE4_2;
+		if (level >= 3) ksw_x86_simd_flag |= SIMD_AVX|SIMD_AVX2;
+	}
 }
 
 void ksw_extd2_simd(void *km, int qlen, const uint8_t *query, int tlen, const uint8_t *target, int8_t m, const int8_t *mat,
