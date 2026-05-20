@@ -13,6 +13,17 @@
 #error "Missing SSE2 or NEON intrinsics"
 #endif
 
+static inline __m128i ksw_i8x4_to_i32x4(const int8_t *x)
+{
+#if defined(__ARM_NEON)
+    return vreinterpretq_u8_s32(vmovl_s16(vget_low_s16(vmovl_s8(vcreate_s8((uint64_t)(uint32_t)*(int32_t*)x)))));
+#elif defined(__SSE4_1__)
+	return _mm_cvtepi8_epi32(_mm_cvtsi32_si128(*(int32_t*)x));
+#else
+	return _mm_setr_epi32(x[0], x[1], x[2], x[3]);
+#endif
+}
+
 void ksw_extd2_sse(void *km, int qlen, const uint8_t *query, int tlen, const uint8_t *target, int8_t m, const int8_t *mat,
 				   int8_t q, int8_t e, int8_t q2, int8_t e2, int w, int zdrop, int end_bonus, int flag, ksw_extz_t *ez)
 {
@@ -46,7 +57,7 @@ void ksw_extd2_sse(void *km, int qlen, const uint8_t *query, int tlen, const uin
 	a2= _mm_sub_epi8(a2, tmp); \
 	b2= _mm_sub_epi8(b2, tmp);
 
-	int r, t, qe = q + e, n_col_, *off = 0, *off_end = 0, tlen_, qlen_, last_st, last_en, wl, wr, max_sc, min_sc, long_thres, long_diff;
+	int r, t, qe = q + e, n_col_, *off = 0, *off_end = 0, tlen_, qlen_, last_st, last_en, last_max_H = 0, wl, wr, max_sc, min_sc, long_thres, long_diff;
 	int with_cigar = !(flag&KSW_EZ_SCORE_ONLY), approx_max = !!(flag&KSW_EZ_APPROX_MAX);
 	int32_t *H = 0, H0 = 0, last_H0_t = 0;
 	uint8_t *qr, *sf, *mem, *mem2 = 0;
@@ -306,26 +317,27 @@ void ksw_extd2_sse(void *km, int qlen, const uint8_t *query, int tlen, const uin
 			// compute H[], max_H and max_t
 			if (r > 0) {
 				int32_t HH[4], tt[4], en1 = st0 + (en0 - st0) / 4 * 4, i;
-				__m128i max_H_, max_t_;
+				__m128i max_H_, max_t_, t_, t4_ = _mm_set1_epi32(4);
 				max_H = H[en0] = en0 > 0? H[en0-1] + u8[en0] : H[en0] + v8[en0]; // special casing the last element
 				max_t = en0;
 				max_H_ = _mm_set1_epi32(max_H);
 				max_t_ = _mm_set1_epi32(max_t);
+				t_ = _mm_set1_epi32(st0);
 				for (t = st0; t < en1; t += 4) { // this implements: H[t]+=v8[t]-qe; if(H[t]>max_H) max_H=H[t],max_t=t;
-					__m128i H1, tmp, t_;
+					__m128i H1, tmp, v_;
 					H1 = _mm_loadu_si128((__m128i*)&H[t]);
-					t_ = _mm_setr_epi32(v8[t], v8[t+1], v8[t+2], v8[t+3]);
-					H1 = _mm_add_epi32(H1, t_);
+					v_ = ksw_i8x4_to_i32x4(&v8[t]);
+					H1 = _mm_add_epi32(H1, v_);
 					_mm_storeu_si128((__m128i*)&H[t], H1);
-					t_ = _mm_set1_epi32(t);
 					tmp = _mm_cmpgt_epi32(H1, max_H_);
 #ifdef __SSE4_1__
-					max_H_ = _mm_blendv_epi8(max_H_, H1, tmp);
+					max_H_ = _mm_max_epi32(max_H_, H1);
 					max_t_ = _mm_blendv_epi8(max_t_, t_, tmp);
 #else
 					max_H_ = _mm_or_si128(_mm_and_si128(tmp, H1), _mm_andnot_si128(tmp, max_H_));
 					max_t_ = _mm_or_si128(_mm_and_si128(tmp, t_), _mm_andnot_si128(tmp, max_t_));
 #endif
+					t_ = _mm_add_epi32(t_, t4_);
 				}
 				_mm_storeu_si128((__m128i*)HH, max_H_);
 				_mm_storeu_si128((__m128i*)tt, max_t_);
@@ -345,6 +357,15 @@ void ksw_extd2_sse(void *km, int qlen, const uint8_t *query, int tlen, const uin
 			if (ksw_apply_zdrop(ez, 1, max_H, r, max_t, zdrop, e2)) break;
 			if (r == qlen + tlen - 2 && en0 == tlen - 1)
 				ez->score = H[tlen - 1];
+			// early stopping in the extension-only mode; this block should not change the alignment
+			if (flag & KSW_EZ_EXTZ_ONLY) {
+				int32_t rH = last_max_H > max_H? last_max_H : max_H; // NB: if diagonal r is on the optimal path, r-1 or r+1 is not on the optimal path
+				int32_t rq = qlen - (r - st0), rt = tlen - en0;
+				// 3 conditions: hitting bottom of the DP matrix, hitting the right boundary of the matrix, and bracketing the diagonal
+				int32_t rm = rq >= tlen - st0? tlen - st0 : rt >= qlen - (r - en0)? qlen - (r - en0) : tlen + qlen - 1 - r;
+				if (rH + rm * max_sc + end_bonus < ez->max) break;
+			}
+			last_max_H = max_H; // need this for calculating rH
 		} else { // find approximate max; Z-drop might be inaccurate, too.
 			if (r > 0) {
 				if (last_H0_t >= st0 && last_H0_t <= en0 && last_H0_t + 1 >= st0 && last_H0_t + 1 <= en0) {
