@@ -336,7 +336,7 @@ static void mb_align_pair(void *km, const mb_opt_t *opt, int qlen, const uint8_t
 		ksw_reset_extz(ez);
 		for (j = 0, ez->score = ez->max = 0; j < qlen; ++j) {
 			ez->score += mat[tseq[j] * 5 + qseq[j]];
-			n_mm += (tseq[j] < 4 && qseq[j] < 4 && mat[tseq[j] * 5 + qseq[j]] < 0);
+			n_mm += (tseq[j] > 3 || qseq[j] > 3 || mat[tseq[j] * 5 + qseq[j]] < 0);
 			if (ez->max < ez->score) ez->max = ez->score, ez->max_q = ez->max_t = j;
 		}
 		if (n_mm <= 2) {
@@ -352,7 +352,7 @@ static void mb_align_pair(void *km, const mb_opt_t *opt, int qlen, const uint8_t
 		ksw_reset_extz(ez);
 		for (j = 0, ez->score = 0; j < qlen; ++j) {
 			ez->score += mat[tseq[j] * 5 + qseq[j]];
-			n_mm += (tseq[j] < 4 && qseq[j] < 4 && mat[tseq[j] * 5 + qseq[j]] < 0);
+			n_mm += (tseq[j] > 3 || qseq[j] > 3 || mat[tseq[j] * 5 + qseq[j]] < 0);
 		}
 		if (n_mm <= 3 || ez->score > max_gapped_score) {
 			ez->cigar = ksw_push_cigar(km, &ez->n_cigar, &ez->m_cigar, ez->cigar, MB_CIGAR_MATCH, qlen);
