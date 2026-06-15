@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-#define MB_VERSION "0.0-r332-dirty"
+#define MB_VERSION "0.1-r363"
 
-#define MB_F_SAM              (0x1LL)       // output in the SAM format
+#define MB_F_PAF              (0x1LL)       // output in the PAF format
 #define MB_F_NO_UNMAP         (0x2LL)       // output unmapped query sequences
 #define MB_F_COPY_COMMENT     (0x4LL)       // copy FASTX comments to output
 #define MB_F_PE               (0x8LL)       // paired-end mode
@@ -111,7 +111,7 @@ typedef struct {
 	int32_t mlen, blen;
 	int32_t mapq;
 	uint32_t hash;
-	uint32_t rev:1, proper_pair:1, sam_pri:1, flt:1, inv:1, split:2, split_inv:1, rescued:1, frac_high:8, dummy:15;
+	uint32_t rev:1, proper_pair:1, sam_pri:1, flt:1, inv:1, split:2, split_inv:1, rescued:1, frac_high:8, seed_ratio:8, dummy:7;
 	mb_extra_t *p;
 } mb_hit_t;
 
