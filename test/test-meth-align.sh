@@ -15,7 +15,7 @@ set -e
 MINIBWA="${MINIBWA:-./minibwa}"
 TMP="${TMPDIR:-/tmp}/minibwa-meth-align.$$"
 mkdir -p "$TMP"
-trap "rm -rf $TMP" EXIT
+trap 'rm -rf "$TMP"' EXIT
 
 gzip -dc test/chrM-human.fa.gz > "$TMP/ref.fa"
 # Bisulfite-convert sequence lines only (FASTA = alternating header/seq lines).
