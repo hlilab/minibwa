@@ -1,3 +1,5 @@
+[![preprint](https://img.shields.io/badge/arXiv-2606.15357-blue)](https://arxiv.org/abs/2606.15357)
+
 ## Getting Started
 ```sh
 git clone https://github.com/lh3/minibwa
