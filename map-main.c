@@ -118,8 +118,18 @@ static void worker_for_format(void *data, long i, int tid)
 	const mb_idx_t *idx = s->p->idx;
 	kstring_t *out = &s->str[i];
 	void *km = s->fmt_km[tid]; // per-thread kalloc pool, reused across this thread's superbatches
+	int64_t est = 0;
 	int32_t b, k, j;
 	out->l = 0;
+	// pre-size from the superbatch's bases (SEQ+QUAL ~ 2*l_seq) plus a fixed
+	// per-record allowance for the name and fields, so the per-field appends do
+	// not grow the buffer up from zero (which also rounds up to ~1.7x the size)
+	for (b = 0; b < s->sb_cnt[i]; ++b) {
+		int32_t frag = s->sb_off[i] + b;
+		for (k = s->seg_off[frag]; k < s->seg_off[frag] + s->seg_cnt[frag]; ++k)
+			est += 2 * (int64_t)s->seq[k].l_seq + 128;
+	}
+	if (est + 1 > (int64_t)out->m) { out->m = est + 1; out->s = kom_realloc(char, out->s, out->m); }
 	for (b = 0; b < s->sb_cnt[i]; ++b) {
 		int32_t frag = s->sb_off[i] + b;
 		int32_t seg_st = s->seg_off[frag], seg_en = s->seg_off[frag] + s->seg_cnt[frag];
