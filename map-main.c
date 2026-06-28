@@ -334,6 +334,7 @@ static ko_longopt_t long_options[] = {
 	{ "chain-only",   ko_no_argument,       309 },
 	{ "meth",         ko_no_argument,       310 },
 	{ "hic",          ko_no_argument,       311 },
+	{ "xa",           ko_required_argument, 312 },
 	{ "dbg-aln-seq",  ko_no_argument,       601 },
 	{ "dbg-anchor",   ko_no_argument,       602 },
 	{ "dbg-seed",     ko_no_argument,       603 },
@@ -380,7 +381,8 @@ static int usage_map(FILE *fp, const mb_opt_t *opt)
 	fprintf(fp, "  Input/Output:\n");
 	fprintf(fp, "    -o FILE          output file name [stdout]\n");
 	fprintf(fp, "    -u               don't output unmapped reads\n");
-	fprintf(fp, "    --outn=INT       output up to INT secondary alignments [0]\n");
+	fprintf(fp, "    --outn=NUM       output up to INT secondary alignments [0]\n");
+	fprintf(fp, "    --xa=NUM         if <=NUM hits with score >%g%% of the best hit, output them to XA [%d]\n", opt->xa_ratio*100.0, opt->xa_max);
 	fprintf(fp, "    -y               copy FASTA/Q comments to output\n");
 	fprintf(fp, "    -Y               use soft clipping for supplementary alignments\n");
 	fprintf(fp, "    -H STR           if STR starts with @, insert to header; or insert lines in file STR []\n");
@@ -458,7 +460,7 @@ int main_map(int argc, char *argv[])
 		else if (c == 301) { // --kalloc
 			yes_or_no(&mo, MB_F_NO_KALLOC, o.longidx, o.arg, 0);
 		} else if (c == 302) { // --outn
-			mo.out_n = atoi(o.arg);
+			mo.out_n = kom_parse_num(o.arg, 0);
 		} else if (c == 303) { // --pe-predef
 			mo.flag |= MB_F_PE_PREDEF;
 		} else if (c == 304) { // --rescue
@@ -478,6 +480,8 @@ int main_map(int argc, char *argv[])
 			mo.flag |= MB_F_METH;
 		} else if (c == 311) { // --hic
 			mo.flag |= MB_F_PRIMARY5 | MB_F_NO_PAIRING;
+		} else if (c == 312) { // --xa
+			mo.xa_max = kom_parse_num(o.arg, 0);
 		} else if (c == 601) { // --dbg-aln-seq
 			kom_dbg_flag |= MB_DBG_ALN_SEQ;
 		} else if (c == 602) { // --dbg-anchor
