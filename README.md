@@ -1,5 +1,5 @@
 [![GitHub Downloads](https://img.shields.io/github/downloads/lh3/minibwa/total.svg?style=social&logo=github&label=Download)](https://github.com/lh3/minibwa/releases)
-[![Bioconda](https://img.shields.io/conda/dn/bioconda/minibwa.svg?style=flag&label=bioconda)](https://anaconda.org/bioconda/minibwa)
+[![Bioconda](https://img.shields.io/conda/dn/bioconda/minibwa.svg?style=flag&label=bioconda)](https://bioconda.github.io/recipes/minibwa/README.html)
 [![Homebrew](https://img.shields.io/homebrew/v/minibwa)](https://formulae.brew.sh/formula/minibwa)
 [![Build Status](https://github.com/lh3/minibwa/actions/workflows/build.yml/badge.svg)](https://github.com/lh3/minibwa/actions)
 [![preprint](https://img.shields.io/badge/arXiv-2606.15357-blue)](https://arxiv.org/abs/2606.15357)
