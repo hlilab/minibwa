@@ -335,6 +335,7 @@ static ko_longopt_t long_options[] = {
 	{ "meth",         ko_no_argument,       310 },
 	{ "hic",          ko_no_argument,       311 },
 	{ "xa",           ko_required_argument, 312 },
+	{ "mmap",         ko_no_argument,       313 },
 	{ "dbg-aln-seq",  ko_no_argument,       601 },
 	{ "dbg-anchor",   ko_no_argument,       602 },
 	{ "dbg-seed",     ko_no_argument,       603 },
@@ -388,6 +389,7 @@ static int usage_map(FILE *fp, const mb_opt_t *opt)
 	fprintf(fp, "    -H STR           if STR starts with @, insert to header; or insert lines in file STR []\n");
 	fprintf(fp, "    -5               take the alignment with the smallest query position as primary\n");
 	fprintf(fp, "    -K NUM1[,NUM2]   process NUM1-NUM2 bp of query sequences in a batch [100m,1g]\n");
+	fprintf(fp, "    --mmap           load the index via mmap() (shared across processes)\n");
 	fprintf(fp, "    --version        print version number\n");
 	fprintf(fp, "    --help           print this help message\n");
 	return fp == stdout? 0 : 1;
@@ -409,7 +411,7 @@ static inline void yes_or_no(mb_opt_t *opt, uint64_t flag, int long_idx, const c
 int main_map(int argc, char *argv[])
 {
 	const char *opt_str = "x:o:k:c:m:p:A:B:U:b:O:E:t:K:N:PyYR:H:aul:w:W:g:5s:f";
-	int32_t c;
+	int32_t c, use_mmap = 0;
 	mb_idx_t *idx;
 	mb_opt_t mo;
 	char *fn_out = 0, *rg_line = 0, *s;
@@ -482,6 +484,8 @@ int main_map(int argc, char *argv[])
 			mo.flag |= MB_F_PRIMARY5 | MB_F_NO_PAIRING;
 		} else if (c == 312) { // --xa
 			mo.xa_max = kom_parse_num(o.arg, 0);
+		} else if (c == 313) { // --mmap
+			use_mmap = 1;
 		} else if (c == 601) { // --dbg-aln-seq
 			kom_dbg_flag |= MB_DBG_ALN_SEQ;
 		} else if (c == 602) { // --dbg-anchor
@@ -524,7 +528,8 @@ int main_map(int argc, char *argv[])
 	if (argc - o.ind < 2)
 		return usage_map(stderr, &mo);
 
-	idx = mb_idx_load(argv[o.ind], !!(mo.flag & MB_F_METH));
+	idx = use_mmap? mb_idx_load_mmap(argv[o.ind], !!(mo.flag & MB_F_METH))
+	              : mb_idx_load(argv[o.ind], !!(mo.flag & MB_F_METH));
 	kom_assert(idx, "failed to load the index.");
 	if (kom_verbose >= 3)
 		fprintf(stderr, "[M::%s::%.3f*%.2f] index loaded\n", __func__, kom_realtime(), kom_percent_cpu());

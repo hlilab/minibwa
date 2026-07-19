@@ -125,6 +125,7 @@ extern "C" {
 #endif
 
 mb_idx_t *mb_idx_load(const char *prefix, int32_t is_meth);
+mb_idx_t *mb_idx_load_mmap(const char *prefix, int32_t is_meth);
 void mb_idx_destroy(mb_idx_t *idx);
 const char *mb_idx_ctg_name(const mb_idx_t *idx, int32_t tid);
 int64_t mb_idx_ctg_len(const mb_idx_t *idx, int32_t tid);
