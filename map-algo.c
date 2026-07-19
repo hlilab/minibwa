@@ -41,7 +41,7 @@ end_idx_load:
 	return idx;
 }
 
-mb_idx_t *mb_idx_load_mmap(const char *prefix, int32_t is_meth)
+mb_idx_t *mb_idx_load_mmap(const char *prefix, int32_t is_meth, int preload)
 {
 	char *buf;
 	mb_idx_t *idx = 0;
@@ -49,11 +49,11 @@ mb_idx_t *mb_idx_load_mmap(const char *prefix, int32_t is_meth)
 	mb_bwt_t *bwt;
 	buf = kom_calloc(char, strlen(prefix) + 10);
 	strcat(strcpy(buf, prefix), ".l2b");
-	l2b = l2b_load_mmap(buf);
+	l2b = l2b_load_mmap(buf, preload);
 	if (l2b == 0) goto end_idx_load_mmap;
 	if (is_meth) strcat(strcpy(buf, prefix), ".meth.mbw");
 	else strcat(strcpy(buf, prefix), ".mbw");
-	bwt = mb_bwt_load_mmap(buf);
+	bwt = mb_bwt_load_mmap(buf, preload);
 	if (bwt == 0) {
 		l2b_destroy(l2b);
 		goto end_idx_load_mmap;

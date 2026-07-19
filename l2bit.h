@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 l2b_t *l2b_load(const char *fn);
-l2b_t *l2b_load_mmap(const char *fn);
+l2b_t *l2b_load_mmap(const char *fn, int preload);
 void l2b_destroy(l2b_t *l2b);
 int64_t l2b_intv2cid(const l2b_t *l2b, uint64_t st, uint64_t en, int64_t *cst, int *rev);
 int64_t l2b_intv2cid_meth(const l2b_t *l2b, uint64_t st, uint64_t en, l2b_meth_t *mt, int64_t *cst, int *rev);

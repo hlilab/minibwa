@@ -55,7 +55,7 @@ void mb_bwt_destroy(mb_bwt_t *bwt);
 mb_bwt_t *mb_bwt_load_raw(const char *fn); // from raw bwt_gen.c output
 int mb_bwt_save(const char *fn, const mb_bwt_t *bwt);
 mb_bwt_t *mb_bwt_load(const char *fn);
-mb_bwt_t *mb_bwt_load_mmap(const char *fn);
+mb_bwt_t *mb_bwt_load_mmap(const char *fn, int preload);
 mb_bwt_t *mb_bwt_init_from_raw(int is_byte, const void *raw_, uint64_t len, uint64_t primary);
 
 void mb_bwt_cache(mb_bwt_t *bwt, int32_t len);

@@ -335,7 +335,7 @@ load_failure:
 	return 0;
 }
 
-l2b_t *l2b_load_mmap(const char *fn)
+l2b_t *l2b_load_mmap(const char *fn, int preload)
 {
 	int fd, mmap_flags = MAP_SHARED;
 	struct stat st;
@@ -351,7 +351,7 @@ l2b_t *l2b_load_mmap(const char *fn)
 	if (fstat(fd, &st) < 0 || st.st_size < 64) { close(fd); return 0; }
 	map_len = st.st_size;
 #ifdef MAP_POPULATE
-	mmap_flags |= MAP_POPULATE;
+	if (preload) mmap_flags |= MAP_POPULATE;
 #endif
 	base = (uint8_t*)mmap(0, map_len, PROT_READ, mmap_flags, fd, 0);
 	close(fd);

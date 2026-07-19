@@ -682,7 +682,7 @@ mb_bwt_t *mb_bwt_load(const char *fn)
 	return bwt;
 }
 
-mb_bwt_t *mb_bwt_load_mmap(const char *fn)
+mb_bwt_t *mb_bwt_load_mmap(const char *fn, int preload)
 {
 	int fd, mmap_flags = MAP_SHARED;
 	struct stat st;
@@ -696,7 +696,7 @@ mb_bwt_t *mb_bwt_load_mmap(const char *fn)
 	if (fstat(fd, &st) < 0 || st.st_size < 48) { close(fd); return 0; }
 	map_len = st.st_size;
 #ifdef MAP_POPULATE
-	mmap_flags |= MAP_POPULATE;
+	if (preload) mmap_flags |= MAP_POPULATE;
 #endif
 	base = (uint8_t*)mmap(0, map_len, PROT_READ, mmap_flags, fd, 0);
 	close(fd);
