@@ -1,14 +1,8 @@
-#define _DEFAULT_SOURCE // expose MADV_RANDOM etc. under -std=c99 (glibc >= 2.19)
-#define _BSD_SOURCE     // ditto on older glibc (e.g. CentOS 7 / glibc 2.17)
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 #include "kommon.h"
 #include "kalloc.h"
 #include "bwt.h"
@@ -41,7 +35,7 @@ void mb_bwt_destroy(mb_bwt_t *bwt)
 {
 	if (bwt == 0) return;
 	free(bwt->pre); // pre is always heap-allocated (by mb_bwt_cache)
-	if (bwt->mmap) munmap(bwt->mmap, bwt->mmap_len); // data/sa point into the mapped file
+	if (bwt->mmap) kom_munmap(bwt->mmap, bwt->mmap_len); // data/sa point into the mapped file
 	else { free(bwt->sa); free(bwt->data); }
 	free(bwt);
 }
@@ -684,27 +678,14 @@ mb_bwt_t *mb_bwt_load(const char *fn)
 
 mb_bwt_t *mb_bwt_load_mmap(const char *fn, int preload)
 {
-	int fd, mmap_flags = MAP_SHARED;
-	struct stat st;
 	uint8_t *base;
 	size_t map_len;
 	uint64_t data_off, sa_off, n_sa_off, min_len;
 	mb_bwt_t *bwt;
 
-	fd = open(fn, O_RDONLY);
-	if (fd < 0) return 0;
-	if (fstat(fd, &st) < 0 || st.st_size < 48) { close(fd); return 0; }
-	map_len = st.st_size;
-#ifdef MAP_POPULATE
-	if (preload) mmap_flags |= MAP_POPULATE;
-#endif
-	base = (uint8_t*)mmap(0, map_len, PROT_READ, mmap_flags, fd, 0);
-	close(fd);
-	if (base == MAP_FAILED) return 0;
-	if (strncmp((const char*)base, MB_MAGIC, 4) != 0) { munmap(base, map_len); return 0; }
-#ifdef MADV_RANDOM
-	madvise(base, map_len, MADV_RANDOM);
-#endif
+	base = (uint8_t*)kom_mmap_file(fn, &map_len, preload);
+	if (base == 0) return 0;
+	if (map_len < 48 || strncmp((const char*)base, MB_MAGIC, 4) != 0) { kom_munmap(base, map_len); return 0; }
 
 	bwt = mb_bwt_init();
 	bwt->mmap = base;

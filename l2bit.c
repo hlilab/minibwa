@@ -1,12 +1,6 @@
-#define _DEFAULT_SOURCE // expose MADV_RANDOM etc. under -std=c99 (glibc >= 2.19)
-#define _BSD_SOURCE     // ditto on older glibc (e.g. CentOS 7 / glibc 2.17)
 #include <zlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 #include "kommon.h"
 #include "l2bit.h"
 #include "kseq.h"
@@ -238,7 +232,7 @@ void l2b_destroy(l2b_t *l2b)
 {
 	if (l2b->mmap) { // ambi/mask/pac/cat_name/cat_comm point into the mapped file
 		free(l2b->ctg); // ctg[] is always heap-allocated
-		munmap(l2b->mmap, l2b->mmap_len);
+		kom_munmap(l2b->mmap, l2b->mmap_len);
 	} else {
 		free(l2b->cat_name); free(l2b->cat_comm);
 		free(l2b->pac); free(l2b->ambi); free(l2b->mask); free(l2b->ctg);
@@ -337,8 +331,6 @@ load_failure:
 
 l2b_t *l2b_load_mmap(const char *fn, int preload)
 {
-	int fd, mmap_flags = MAP_SHARED;
-	struct stat st;
 	uint8_t *base;
 	const uint64_t *hdr, *lens;
 	uint64_t off, i, len_name, len_comm, foff;
@@ -346,20 +338,9 @@ l2b_t *l2b_load_mmap(const char *fn, int preload)
 	char *p_name, *p_comm;
 	l2b_t *l2b;
 
-	fd = open(fn, O_RDONLY);
-	if (fd < 0) return 0;
-	if (fstat(fd, &st) < 0 || st.st_size < 64) { close(fd); return 0; }
-	map_len = st.st_size;
-#ifdef MAP_POPULATE
-	if (preload) mmap_flags |= MAP_POPULATE;
-#endif
-	base = (uint8_t*)mmap(0, map_len, PROT_READ, mmap_flags, fd, 0);
-	close(fd);
-	if (base == MAP_FAILED) return 0;
-	if (strncmp((const char*)base, L2B_MAGIC, 4) != 0) { munmap(base, map_len); return 0; }
-#ifdef MADV_RANDOM
-	madvise(base, map_len, MADV_RANDOM);
-#endif
+	base = (uint8_t*)kom_mmap_file(fn, &map_len, preload);
+	if (base == 0) return 0;
+	if (map_len < 64 || strncmp((const char*)base, L2B_MAGIC, 4) != 0) { kom_munmap(base, map_len); return 0; }
 
 	l2b = kom_calloc(l2b_t, 1);
 	l2b->mmap = base;
