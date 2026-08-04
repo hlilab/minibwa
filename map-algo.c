@@ -752,7 +752,7 @@ mb_hit_t **mb_map_batch(const mb_opt_t *opt, const mb_idx_t *idx, int32_t n_seq,
 	kfree(km, seq4);
 
 	// paired-end processing
-	if (is_pe && n_seq >= 2 && !(opt->flag & MB_F_NO_PAIRING)) {
+	if (is_pe && n_seq >= 2 && !(opt->flag & (MB_F_NO_PAIRING|MB_F_NO_ALN))) {
 		mb_pestat_t pes[4];
 		for (i = 0; i < 4; ++i) pes[i].failed = 1;
 		pes[1].failed = 0;
