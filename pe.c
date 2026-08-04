@@ -502,6 +502,9 @@ void mb_pair(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_t n_hit[2], 
 
 	mb_sync_high_cov(n_hit[0], hit[0]);
 	mb_sync_high_cov(n_hit[1], hit[1]);
+	for (r = 0; r < 2; ++r) // clear 0x2 as these will be re-evaluated and set in the following
+		for (i = 0; i < n_hit[r]; ++i)
+			hit[r][i].proper_pair = 0;
 	if (paux.score >= score_se - opt->pen_unpair * opt->a) { // choose the paired hits
 		int32_t mapq_pe, score2 = paux.sub_sc, diff;
 		double identity;
@@ -536,7 +539,6 @@ void mb_pair(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_t n_hit[2], 
 			for (i = 0; i < n_hit[r]; ++i) { // handle other chimeric hits
 				const mb_hit_t *q = h[r];
 				mb_hit_t *p = &hit[r][i];
-				p->sam_pri = p->proper_pair = 0;
 				if (q != p && p->id == p->parent) { // p is a chimeric hit that is not h[r]
 					int32_t j, ol = p->qe <= q->qs || p->qs >= q->qe? 0 : (p->qe < q->qe? p->qe : q->qe) - (p->qs > q->qs? p->qs : q->qs);
 					if (ol > opt->mask_level * (p->qe - p->qs)) { // if p overlaps with h[r] a lot, make it a secondary hit
@@ -547,25 +549,30 @@ void mb_pair(void *km, const mb_opt_t *opt, const l2b_t *l2b, int32_t n_hit[2], 
 					}
 				}
 			}
-			h[r]->sam_pri = h[r]->proper_pair = 1;
+			for (i = 0; i < n_hit[r]; ++i) {
+				mb_hit_t *p = &hit[r][i];
+				p->sam_pri = p->proper_pair = 0;
+				if (p->id == p->parent)
+					p->proper_pair = 1;
+			}
+			h[r]->sam_pri = 1;
 		}
 		if (opt->flag & MB_F_PRIMARY5) {
 			int32_t pri[2];
 			pri[0] = mb_set_sam_pri(n_hit[0], hit[0], 1);
 			pri[1] = mb_set_sam_pri(n_hit[1], hit[1], 1);
 			if (&hit[0][pri[0]] != h[0] || &hit[1][pri[1]] != h[1]) // if sam_pri is changed, clear flag 0x2
-				h[0]->proper_pair = h[1]->proper_pair = 0;
+				for (r = 0; r < 2; ++r)
+					for (i = 0; i < n_hit[r]; ++i)
+						hit[r][i].proper_pair = 0;
 		}
 		reset_sam_pri = 0;
 	} else { // choose the unpaired hits
 		int32_t diff = score_se - opt->pen_unpair * opt->a - paux.score;
 		int32_t mapq_pe = 6 * diff / opt->a;
-		for (r = 0; r < 2; ++r) {
-			for (i = 0; i < n_hit[r]; ++i) {
+		for (r = 0; r < 2; ++r)
+			for (i = 0; i < n_hit[r]; ++i)
 				hit[r][i].mapq = hit[r][i].mapq < mapq_pe? hit[r][i].mapq : mapq_pe;
-				hit[r][i].proper_pair = 0;
-			}
-		}
 	}
 end_pairing:
 	if (reset_sam_pri) {

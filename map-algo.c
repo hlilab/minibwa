@@ -376,7 +376,7 @@ int32_t mb_set_sam_pri(int32_t n, mb_hit_t *r, int32_t is_primary5)
 	}
 	assert(n_pri > 0);
 	new_pri = is_primary5? min_i : first_i;
-	r[new_pri].sam_pri = 1; // NB: proper_pair may need to be changed, which is handled in mb_pair()
+	r[new_pri].sam_pri = 1;
 	return new_pri;
 }
 
